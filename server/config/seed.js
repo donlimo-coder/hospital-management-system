@@ -1,10 +1,9 @@
 // Populates the database with a demo admin, two doctors, and a patient.
 // Run with: npm run seed  (make sure MONGO_URI in .env points to your DB)
 require("dotenv").config();
-const mongoose = require("mongoose");
 const dns = require("dns");
 dns.setServers(["8.8.8.8", "8.8.4.4"]);
-
+const mongoose = require("mongoose");
 const User = require("../models/User");
 const Doctor = require("../models/Doctor");
 const Patient = require("../models/Patient");
@@ -34,7 +33,11 @@ const seed = async () => {
     specialization: "Cardiologist",
     experienceYears: 12,
     consultationFee: 1500,
-    availability: [{ day: "Mon", startTime: "09:00", endTime: "17:00" }],
+    availability: [
+      { day: "Mon", startTime: "09:00", endTime: "17:00" },
+      { day: "Wed", startTime: "09:00", endTime: "17:00" },
+      { day: "Fri", startTime: "09:00", endTime: "13:00" },
+    ],
   });
   doctorUser1.doctorProfile = doctor1._id;
   await doctorUser1.save();
@@ -51,7 +54,11 @@ const seed = async () => {
     specialization: "General Practitioner",
     experienceYears: 6,
     consultationFee: 800,
-    availability: [{ day: "Tue", startTime: "08:00", endTime: "16:00" }],
+    availability: [
+      { day: "Tue", startTime: "08:00", endTime: "16:00" },
+      { day: "Thu", startTime: "08:00", endTime: "16:00" },
+      { day: "Sat", startTime: "09:00", endTime: "12:00" },
+    ],
   });
   doctorUser2.doctorProfile = doctor2._id;
   await doctorUser2.save();
