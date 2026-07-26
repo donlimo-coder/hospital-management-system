@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from "react";
 import api from "../services/api";
 
-// Shown once a patient is found or just registered — lets staff attach
-// lab reports / X-rays (Cloudinary-backed) and see what's already on file.
 const PatientReports = ({ patient }) => {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
