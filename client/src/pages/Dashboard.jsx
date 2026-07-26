@@ -144,6 +144,8 @@ const AppointmentsList = ({ role }) => {
   const [loading, setLoading] = useState(true);
   const [notesFormFor, setNotesFormFor] = useState(null);
   const [notesViewFor, setNotesViewFor] = useState(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   useEffect(() => {
     api
@@ -171,60 +173,96 @@ const AppointmentsList = ({ role }) => {
   if (loading) return <p>Loading appointments...</p>;
   if (!appointments.length) return <p>No appointments yet.</p>;
 
+  const filtered = appointments.filter((a) => {
+    if (statusFilter !== "all" && a.status !== statusFilter) return false;
+    if (search.trim()) {
+      const term = search.trim().toLowerCase();
+      const nameMatch = a.patient?.name?.toLowerCase().includes(term) || a.doctor?.name?.toLowerCase().includes(term);
+      if (!nameMatch) return false;
+    }
+    return true;
+  });
+
   return (
-    <table className="data-table">
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Time</th>
-          {role !== "patient" && <th>Patient</th>}
-          {role !== "doctor" && <th>Doctor</th>}
-          <th>Status</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {appointments.map((a) => (
-          <React.Fragment key={a._id}>
+    <div>
+      <div style={{ display: "flex", gap: "0.6rem", marginBottom: "1rem", flexWrap: "wrap" }}>
+        <input
+          placeholder={role === "patient" ? "Search by doctor name..." : "Search by patient or doctor name..."}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #ccc", width: "260px" }}
+        />
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #ccc" }}
+        >
+          <option value="all">All statuses</option>
+          <option value="pending">Pending</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+
+      {filtered.length === 0 ? (
+        <p>No appointments match your search.</p>
+      ) : (
+        <table className="data-table">
+          <thead>
             <tr>
-              <td>{a.date}</td>
-              <td>{a.time}</td>
-              {role !== "patient" && <td>{a.patient?.name}</td>}
-              {role !== "doctor" && <td>{a.doctor?.name}</td>}
-              <td>
-                <span className={`badge badge-${a.status}`}>{a.status}</span>
-              </td>
-              <td style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
-                {role === "doctor" && a.status === "pending" && (
-                  <button onClick={() => updateStatus(a._id, "confirmed")}>Confirm</button>
-                )}
-                {role === "doctor" && a.status === "confirmed" && (
-                  <button onClick={() => setNotesFormFor(notesFormFor === a._id ? null : a._id)}>
-                    {notesFormFor === a._id ? "Close" : "Complete & Add Notes"}
-                  </button>
-                )}
-                {role === "patient" && ["pending", "confirmed"].includes(a.status) && (
-                  <button onClick={() => cancel(a._id)}>Cancel</button>
-                )}
-                {a.status === "completed" && (
-                  <button onClick={() => setNotesViewFor(notesViewFor === a._id ? null : a._id)}>
-                    {notesViewFor === a._id ? "Hide Notes" : "View Notes"}
-                  </button>
-                )}
-              </td>
+              <th>Date</th>
+              <th>Time</th>
+              {role !== "patient" && <th>Patient</th>}
+              {role !== "doctor" && <th>Doctor</th>}
+              <th>Status</th>
+              <th>Actions</th>
             </tr>
-            {notesFormFor === a._id && (
-              <ConsultationNotesForm
-                appointment={a}
-                onSave={(payload) => saveNotes(a._id, payload)}
-                onCancel={() => setNotesFormFor(null)}
-              />
-            )}
-            {notesViewFor === a._id && <ConsultationNotesView appointment={a} />}
-          </React.Fragment>
-        ))}
-      </tbody>
-    </table>
+          </thead>
+          <tbody>
+            {filtered.map((a) => (
+              <React.Fragment key={a._id}>
+                <tr>
+                  <td>{a.date}</td>
+                  <td>{a.time}</td>
+                  {role !== "patient" && <td>{a.patient?.name}</td>}
+                  {role !== "doctor" && <td>{a.doctor?.name}</td>}
+                  <td>
+                    <span className={`badge badge-${a.status}`}>{a.status}</span>
+                  </td>
+                  <td style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                    {role === "doctor" && a.status === "pending" && (
+                      <button onClick={() => updateStatus(a._id, "confirmed")}>Confirm</button>
+                    )}
+                    {role === "doctor" && a.status === "confirmed" && (
+                      <button onClick={() => setNotesFormFor(notesFormFor === a._id ? null : a._id)}>
+                        {notesFormFor === a._id ? "Close" : "Complete & Add Notes"}
+                      </button>
+                    )}
+                    {role === "patient" && ["pending", "confirmed"].includes(a.status) && (
+                      <button onClick={() => cancel(a._id)}>Cancel</button>
+                    )}
+                    {a.status === "completed" && (
+                      <button onClick={() => setNotesViewFor(notesViewFor === a._id ? null : a._id)}>
+                        {notesViewFor === a._id ? "Hide Notes" : "View Notes"}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+                {notesFormFor === a._id && (
+                  <ConsultationNotesForm
+                    appointment={a}
+                    onSave={(payload) => saveNotes(a._id, payload)}
+                    onCancel={() => setNotesFormFor(null)}
+                  />
+                )}
+                {notesViewFor === a._id && <ConsultationNotesView appointment={a} />}
+              </React.Fragment>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
   );
 };
 
