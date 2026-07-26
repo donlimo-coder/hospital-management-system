@@ -111,7 +111,9 @@ const updateAppointment = async (req, res, next) => {
       if (req.body[field] !== undefined) appointment[field] = req.body[field];
     });
 
-    await appointment.save();
+   await appointment.save();
+    await appointment.populate("patient", "name age gender");
+    await appointment.populate("doctor", "name specialization consultationFee");
     res.json({ appointment });
   } catch (err) {
     next(err);
