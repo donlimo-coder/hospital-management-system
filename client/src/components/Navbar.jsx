@@ -20,6 +20,7 @@ const Navbar = () => {
         {user ? (
           <>
             <Link to="/dashboard">Dashboard</Link>
+            <Link to="/bills">Bills</Link>
             {user.role === "patient" && <Link to="/book-appointment">Book Appointment</Link>}
             {user.role === "patient" && <Link to="/my-records">My Records</Link>}
             {["admin", "doctor"].includes(user.role) && <Link to="/reception">Reception</Link>}

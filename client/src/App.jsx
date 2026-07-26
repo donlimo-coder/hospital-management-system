@@ -11,6 +11,8 @@ import Reception from "./pages/Reception";
 import People from "./pages/People";
 import MyAvailability from "./pages/MyAvailability";
 import MyRecords from "./pages/MyRecords";
+import Bills from "./pages/Bills";
+import BillReceipt from "./pages/BillReceipt";
 
 function App() {
   return (
@@ -65,6 +67,22 @@ function App() {
           element={
             <ProtectedRoute roles={["patient"]}>
               <MyRecords />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/bills"
+          element={
+            <ProtectedRoute>
+              <Bills />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/bills/:id"
+          element={
+            <ProtectedRoute>
+              <BillReceipt />
             </ProtectedRoute>
           }
         />

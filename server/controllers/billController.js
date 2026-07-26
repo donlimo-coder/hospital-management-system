@@ -60,4 +60,23 @@ const markBillPaid = async (req, res, next) => {
   }
 };
 
-module.exports = { createBill, getBills, markBillPaid };
+// @route GET /api/bills/:id (owner patient, doctor, admin) — used by the printable receipt page
+const getBillById = async (req, res, next) => {
+  try {
+    const bill = await Bill.findById(req.params.id)
+      .populate("patient", "name memberNumber")
+      .populate({ path: "appointment", populate: { path: "doctor", select: "name specialization" } });
+    if (!bill) return res.status(404).json({ message: "Bill not found" });
+
+    const isOwner = req.user.patientProfile && req.user.patientProfile.toString() === bill.patient._id.toString();
+    if (!["admin", "doctor"].includes(req.user.role) && !isOwner) {
+      return res.status(403).json({ message: "Not authorized to view this bill" });
+    }
+
+    res.json({ bill });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { createBill, getBills, getBillById, markBillPaid };

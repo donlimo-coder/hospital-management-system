@@ -67,3 +67,8 @@ body {
   background: #0f4c81; color: white; border: none; padding: 0.3rem 0.7rem;
   border-radius: 6px; cursor: pointer; font-size: 0.8rem;
 }
+@media print {
+  .navbar, .no-print { display: none !important; }
+  body { background: white; }
+  #receipt { box-shadow: none !important; }
+}
