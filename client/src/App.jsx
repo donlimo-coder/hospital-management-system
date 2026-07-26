@@ -10,6 +10,7 @@ import BookAppointment from "./pages/BookAppointment";
 import Reception from "./pages/Reception";
 import People from "./pages/People";
 import MyAvailability from "./pages/MyAvailability";
+import MyRecords from "./pages/MyRecords";
 
 function App() {
   return (
@@ -56,6 +57,14 @@ function App() {
           element={
             <ProtectedRoute roles={["doctor"]}>
               <MyAvailability />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-records"
+          element={
+            <ProtectedRoute roles={["patient"]}>
+              <MyRecords />
             </ProtectedRoute>
           }
         />
