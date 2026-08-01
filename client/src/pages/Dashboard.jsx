@@ -146,6 +146,7 @@ const AppointmentsList = ({ role }) => {
   const [notesViewFor, setNotesViewFor] = useState(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [reminderStatus, setReminderStatus] = useState({});
 
   useEffect(() => {
     api
@@ -168,6 +169,16 @@ const AppointmentsList = ({ role }) => {
   const cancel = async (id) => {
     await api.put(`/appointments/${id}/cancel`);
     setAppointments((prev) => prev.map((a) => (a._id === id ? { ...a, status: "cancelled" } : a)));
+  };
+
+  const sendReminder = async (id) => {
+    setReminderStatus((prev) => ({ ...prev, [id]: "sending" }));
+    try {
+      await api.post(`/appointments/${id}/reminder`);
+      setReminderStatus((prev) => ({ ...prev, [id]: "sent" }));
+    } catch (err) {
+      setReminderStatus((prev) => ({ ...prev, [id]: "failed" }));
+    }
   };
 
   if (loading) return <p>Loading appointments...</p>;
@@ -230,7 +241,7 @@ const AppointmentsList = ({ role }) => {
                   <td>
                     <span className={`badge badge-${a.status}`}>{a.status}</span>
                   </td>
-                  <td style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                  <td style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", alignItems: "center" }}>
                     {role === "doctor" && a.status === "pending" && (
                       <button onClick={() => updateStatus(a._id, "confirmed")}>Confirm</button>
                     )}
@@ -245,6 +256,20 @@ const AppointmentsList = ({ role }) => {
                     {a.status === "completed" && (
                       <button onClick={() => setNotesViewFor(notesViewFor === a._id ? null : a._id)}>
                         {notesViewFor === a._id ? "Hide Notes" : "View Notes"}
+                      </button>
+                    )}
+                    {["admin", "doctor"].includes(role) && ["pending", "confirmed"].includes(a.status) && (
+                      <button
+                        onClick={() => sendReminder(a._id)}
+                        disabled={reminderStatus[a._id] === "sending"}
+                      >
+                        {reminderStatus[a._id] === "sending"
+                          ? "Sending..."
+                          : reminderStatus[a._id] === "sent"
+                          ? "Reminder Sent"
+                          : reminderStatus[a._id] === "failed"
+                          ? "Retry Reminder"
+                          : "Send Reminder"}
                       </button>
                     )}
                   </td>

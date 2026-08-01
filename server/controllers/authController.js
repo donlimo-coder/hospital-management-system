@@ -35,7 +35,7 @@ const register = async (req, res, next) => {
     });
 
     if (user.role === "doctor") {
-      const doctor = await Doctor.create({
+    const doctor = await Doctor.create({
         user: user._id,
         name,
         specialization: doctorInfo?.specialization || "General Practice",
@@ -45,17 +45,17 @@ const register = async (req, res, next) => {
       user.doctorProfile = doctor._id;
       await user.save();
     } else if (user.role === "patient") {
-      const patient = await Patient.create({
+        const patient = await Patient.create({
         user: user._id,
         name,
         age: patientInfo?.age,
         gender: patientInfo?.gender,
         address: patientInfo?.address,
+        phone,
       });
       user.patientProfile = patient._id;
       await user.save();
     }
-
     const token = signToken(user._id);
     res.status(201).json({ token, user: user.toSafeObject() });
   } catch (err) {

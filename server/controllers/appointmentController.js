@@ -1,5 +1,7 @@
 const Appointment = require("../models/Appointment");
 const Doctor = require("../models/Doctor");
+const Patient = require("../models/Patient");
+const { sendSMS } = require("../utils/sms");
 
 // @route POST /api/appointments (patient, or admin/doctor booking on a patient's behalf)
 // @desc  Book an appointment. Prevents double-booking a doctor's slot.
@@ -45,6 +47,17 @@ const createAppointment = async (req, res, next) => {
       time,
       reason,
     });
+
+    // Fire off a booking confirmation SMS. This never blocks or fails the
+    // booking itself — sendSMS() swallows its own errors.
+    const patientRecord = await Patient.findById(targetPatientId);
+    if (patientRecord?.phone) {
+      const doctorName = doctor.name || "your doctor";
+      sendSMS(
+        patientRecord.phone,
+        `Hospital: Your appointment with Dr. ${doctorName} is confirmed for ${date} at ${time}.`
+      );
+    }
 
     res.status(201).json({ appointment });
   } catch (err) {
@@ -139,10 +152,35 @@ const cancelAppointment = async (req, res, next) => {
   }
 };
 
+// @route POST /api/appointments/:id/reminder (doctor, admin)
+// @desc  Manually trigger a reminder SMS for a specific appointment
+const sendReminder = async (req, res, next) => {
+  try {
+    const appointment = await Appointment.findById(req.params.id)
+      .populate("patient", "name phone")
+      .populate("doctor", "name");
+    if (!appointment) return res.status(404).json({ message: "Appointment not found" });
+
+    if (!appointment.patient?.phone) {
+      return res.status(400).json({ message: "This patient has no phone number on file" });
+    }
+
+    const result = await sendSMS(
+      appointment.patient.phone,
+      `Hospital reminder: You have an appointment with Dr. ${appointment.doctor.name} on ${appointment.date} at ${appointment.time}.`
+    );
+
+    res.json({ message: "Reminder sent", result });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   createAppointment,
   getAppointments,
   getAppointmentById,
   updateAppointment,
   cancelAppointment,
+  sendReminder,
 };
