@@ -51,9 +51,8 @@ const updatePatient = async (req, res, next) => {
     if (!["admin", "doctor"].includes(req.user.role) && !isOwner) {
       return res.status(403).json({ message: "Not authorized to update this patient record" });
     }
-
-    const allowedFields = ["name", "age", "gender", "address"];
-    allowedFields.forEach((field) => {
+const allowedFields = ["name", "age", "gender", "address", "phone"];
+       allowedFields.forEach((field) => {
       if (req.body[field] !== undefined) patient[field] = req.body[field];
     });
 

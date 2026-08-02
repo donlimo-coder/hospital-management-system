@@ -106,11 +106,17 @@ const Reception = () => {
   const [registerError, setRegisterError] = useState("");
   const [newPatient, setNewPatient] = useState(null);
 
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ name: "", age: "", gender: "male", phone: "", address: "" });
+  const [editError, setEditError] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+
   const handleSearch = async (e) => {
     e.preventDefault();
     setSearchError("");
     setFoundPatient(null);
     setNewPatient(null);
+    setIsEditing(false);
     setSearching(true);
     try {
       const { data } = await api.get(`/patients/member/${memberNumber.trim()}`);
@@ -127,6 +133,35 @@ const Reception = () => {
     }
   };
 
+  const startEditing = () => {
+    setEditForm({
+      name: foundPatient.name || "",
+      age: foundPatient.age || "",
+      gender: foundPatient.gender || "male",
+      phone: foundPatient.phone || "",
+      address: foundPatient.address || "",
+    });
+    setEditError("");
+    setIsEditing(true);
+  };
+
+  const handleEditSave = async (e) => {
+    e.preventDefault();
+    setEditError("");
+    setEditSaving(true);
+    try {
+      const { data } = await api.put(`/patients/${foundPatient._id}`, {
+        ...editForm,
+        age: Number(editForm.age) || undefined,
+      });
+      setFoundPatient(data.patient);
+      setIsEditing(false);
+    } catch (err) {
+      setEditError(err.response?.data?.message || "Update failed");
+    } finally {
+      setEditSaving(false);
+    }
+  };
   const handleRegister = async (e) => {
     e.preventDefault();
     setRegisterError("");
@@ -167,18 +202,49 @@ const Reception = () => {
         <>
           <div className="auth-card" style={{ marginTop: "1rem" }}>
             <h2>Patient Found</h2>
-            <p><strong>Member #:</strong> {foundPatient.memberNumber}</p>
-            <p><strong>Name:</strong> {foundPatient.name}</p>
-            <p><strong>Age:</strong> {foundPatient.age || "—"}</p>
-            <p><strong>Gender:</strong> {foundPatient.gender || "—"}</p>
-            <p><strong>Phone:</strong> {foundPatient.phone || "—"}</p>
-            <p><strong>Address:</strong> {foundPatient.address || "—"}</p>
+            {!isEditing ? (
+              <>
+                <p><strong>Member #:</strong> {foundPatient.memberNumber}</p>
+                <p><strong>Name:</strong> {foundPatient.name}</p>
+                <p><strong>Age:</strong> {foundPatient.age || "—"}</p>
+                <p><strong>Gender:</strong> {foundPatient.gender || "—"}</p>
+                <p><strong>Phone:</strong> {foundPatient.phone || "—"}</p>
+                <p><strong>Address:</strong> {foundPatient.address || "—"}</p>
+                <button type="button" onClick={startEditing} style={{ marginTop: "0.5rem" }}>
+                  Edit Details
+                </button>
+              </>
+            ) : (
+              <form onSubmit={handleEditSave}>
+                {editError && <p className="form-error">{editError}</p>}
+                <label>Full Name</label>
+                <input required value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+                <label>Age</label>
+                <input type="number" value={editForm.age} onChange={(e) => setEditForm({ ...editForm, age: e.target.value })} />
+                <label>Gender</label>
+                <select value={editForm.gender} onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+                <label>Phone</label>
+                <input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
+                <label>Address</label>
+                <input value={editForm.address} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} />
+                <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.7rem" }}>
+                  <button type="submit" disabled={editSaving}>
+                    {editSaving ? "Saving..." : "Save Changes"}
+                  </button>
+                  <button type="button" onClick={() => setIsEditing(false)}>
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
           <PatientReports patient={foundPatient} />
         </>
-      )}
-
-      {newPatient && (
+      )}      {newPatient && (
         <>
           <div className="auth-card" style={{ marginTop: "1rem" }}>
             <h2>Patient Registered ✅</h2>
