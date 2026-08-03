@@ -8,11 +8,15 @@ const getPatients = async (req, res, next) => {
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);
     const skip = (page - 1) * limit;
 
-    const filter = {};
+   const filter = {};
     if (req.query.search) {
-      filter.name = new RegExp(req.query.search, "i");
+      const search = req.query.search.trim();
+      filter.$or = [
+        { name: new RegExp(search, "i") },
+        { memberNumber: new RegExp(search, "i") },
+        { phone: new RegExp(search, "i") },
+      ];
     }
-
     const [patients, total] = await Promise.all([
       Patient.find(filter).skip(skip).limit(limit).sort({ name: 1 }),
       Patient.countDocuments(filter),
