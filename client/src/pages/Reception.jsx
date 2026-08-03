@@ -102,12 +102,12 @@ const Reception = () => {
   const [searching, setSearching] = useState(false);
 
   const [showRegisterForm, setShowRegisterForm] = useState(false);
-  const [form, setForm] = useState({ name: "", age: "", gender: "male", phone: "", address: "" });
+  const [form, setForm] = useState({ name: "", age: "", gender: "male", phone: "", address: "", idType: "", idNumber: "" });
   const [registerError, setRegisterError] = useState("");
   const [newPatient, setNewPatient] = useState(null);
 
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({ name: "", age: "", gender: "male", phone: "", address: "" });
+const [editForm, setEditForm] = useState({ name: "", age: "", gender: "male", phone: "", address: "", idType: "", idNumber: "" });
   const [editError, setEditError] = useState("");
   const [editSaving, setEditSaving] = useState(false);
 
@@ -140,6 +140,8 @@ const Reception = () => {
       gender: foundPatient.gender || "male",
       phone: foundPatient.phone || "",
       address: foundPatient.address || "",
+      idType: foundPatient.idType || "",
+      idNumber: foundPatient.idNumber || "",
     });
     setEditError("");
     setIsEditing(true);
@@ -210,6 +212,7 @@ const Reception = () => {
                 <p><strong>Gender:</strong> {foundPatient.gender || "—"}</p>
                 <p><strong>Phone:</strong> {foundPatient.phone || "—"}</p>
                 <p><strong>Address:</strong> {foundPatient.address || "—"}</p>
+                <p><strong>ID:</strong> {foundPatient.idNumber ? `${foundPatient.idType?.replace("_", " ") || "ID"} - ${foundPatient.idNumber}` : "—"}</p>
                 <button type="button" onClick={startEditing} style={{ marginTop: "0.5rem" }}>
                   Edit Details
                 </button>
@@ -231,6 +234,15 @@ const Reception = () => {
                 <input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
                 <label>Address</label>
                 <input value={editForm.address} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} />
+                <label>ID Type</label>
+                <select value={editForm.idType} onChange={(e) => setEditForm({ ...editForm, idType: e.target.value })}>
+                  <option value="">— Select —</option>
+                  <option value="national_id">National ID</option>
+                  <option value="passport">Passport</option>
+                  <option value="birth_certificate">Birth Certificate</option>
+                </select>
+                <label>ID Number</label>
+                <input value={editForm.idNumber} onChange={(e) => setEditForm({ ...editForm, idNumber: e.target.value })} />
                 <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.7rem" }}>
                   <button type="submit" disabled={editSaving}>
                     {editSaving ? "Saving..." : "Save Changes"}
@@ -278,6 +290,17 @@ const Reception = () => {
 
           <label>Address</label>
           <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+
+          <label>ID Type</label>
+          <select value={form.idType} onChange={(e) => setForm({ ...form, idType: e.target.value })}>
+            <option value="">— Select —</option>
+            <option value="national_id">National ID</option>
+            <option value="passport">Passport</option>
+            <option value="birth_certificate">Birth Certificate</option>
+          </select>
+
+          <label>ID Number</label>
+          <input value={form.idNumber} onChange={(e) => setForm({ ...form, idNumber: e.target.value })} />
 
           <button type="submit">Register & Get Member Number</button>
         </form>
