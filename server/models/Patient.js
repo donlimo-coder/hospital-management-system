@@ -11,6 +11,8 @@ const patientSchema = new mongoose.Schema(
     age: { type: Number, min: 0 },
     gender: { type: String, enum: ["male", "female", "other"] },
     phone: { type: String, trim: true },
+    idType: { type: String, enum: ["national_id", "passport", "birth_certificate"] },
+    idNumber: { type: String, trim: true },
     address: { type: String, trim: true },
     registeredBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // staff member who created a walk-in file
     medicalHistory: [

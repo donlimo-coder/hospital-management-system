@@ -8,15 +8,17 @@ const getPatients = async (req, res, next) => {
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);
     const skip = (page - 1) * limit;
 
-   const filter = {};
+    const filter = {};
     if (req.query.search) {
       const search = req.query.search.trim();
       filter.$or = [
         { name: new RegExp(search, "i") },
         { memberNumber: new RegExp(search, "i") },
         { phone: new RegExp(search, "i") },
+        { idNumber: new RegExp(search, "i") },
       ];
     }
+
     const [patients, total] = await Promise.all([
       Patient.find(filter).skip(skip).limit(limit).sort({ name: 1 }),
       Patient.countDocuments(filter),
@@ -55,8 +57,9 @@ const updatePatient = async (req, res, next) => {
     if (!["admin", "doctor"].includes(req.user.role) && !isOwner) {
       return res.status(403).json({ message: "Not authorized to update this patient record" });
     }
-const allowedFields = ["name", "age", "gender", "address", "phone"];
-       allowedFields.forEach((field) => {
+
+    const allowedFields = ["name", "age", "gender", "address", "phone", "idType", "idNumber"];
+    allowedFields.forEach((field) => {
       if (req.body[field] !== undefined) patient[field] = req.body[field];
     });
 
@@ -151,7 +154,7 @@ const deleteReport = async (req, res, next) => {
 //        their file directly and hands them their new member number.
 const createWalkInPatient = async (req, res, next) => {
   try {
-    const { name, age, gender, phone, address } = req.body;
+    const { name, age, gender, phone, address, idType, idNumber } = req.body;
     if (!name) {
       return res.status(400).json({ message: "Patient name is required" });
     }
@@ -162,6 +165,8 @@ const createWalkInPatient = async (req, res, next) => {
       gender,
       phone,
       address,
+      idType,
+      idNumber,
       registeredBy: req.user._id,
     });
 
