@@ -13,6 +13,8 @@ const userSchema = new mongoose.Schema(
     },
     phone: { type: String, trim: true },
     isActive: { type: Boolean, default: true },
+    resetPasswordCode: { type: String, select: false },
+    resetPasswordExpires: { type: Date, select: false },
     // Links to role-specific profile documents
     doctorProfile: { type: mongoose.Schema.Types.ObjectId, ref: "Doctor" },
     patientProfile: { type: mongoose.Schema.Types.ObjectId, ref: "Patient" },

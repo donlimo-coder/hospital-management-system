@@ -38,6 +38,12 @@ body {
   background: white; padding: 2rem; border-radius: 12px; width: 100%; max-width: 420px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.08); display: flex; flex-direction: column; gap: 0.5rem;
 }
+ .form-hint { color: #5b6b7a; font-size: 0.9rem; margin: 0 0 0.5rem; }
+.form-success { color: #2a9d8f; font-size: 0.9rem; background: #eaf3f0; padding: 0.6rem 0.8rem; border-radius: 8px; }
+.link-button {
+  background: none; border: none; padding: 0; color: #0f4c81; font-weight: 600;
+  cursor: pointer; text-decoration: underline; font-size: inherit;
+}
 .auth-card label { font-size: 0.85rem; font-weight: 600; margin-top: 0.5rem; }
 .auth-card input, .auth-card select, .auth-card textarea {
   padding: 0.6rem; border-radius: 6px; border: 1px solid #ccc; font-size: 1rem;

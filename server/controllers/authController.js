@@ -1,4 +1,11 @@
 const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
+const { sendSMS } = require("../utils/sms");
+
+// Reduces any Kenyan phone format (0722..., 254722..., +254722...) down to
+// the last 9 digits, so we can match a stored number regardless of how it
+// was originally saved.
+const phoneSuffix = (phone) => phone.replace(/\D/g, "").slice(-9);
 const User = require("../models/User");
 const Doctor = require("../models/Doctor");
 const Patient = require("../models/Patient");
@@ -96,4 +103,68 @@ const getMe = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, getMe };
+// @route POST /api/auth/forgot-password
+// @desc  Generate a 6-digit reset code, SMS it to the user's phone
+const forgotPassword = async (req, res, next) => {
+  try {
+    const { phone } = req.body;
+    if (!phone) return res.status(400).json({ message: "phone is required" });
+
+    const suffix = phoneSuffix(phone);
+    const user = await User.findOne({ phone: { $regex: suffix + "$" } });
+    // Respond the same way whether or not the number matches an account,
+    // so we don't reveal which phone numbers are registered.
+    if (user) {
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const salt = await bcrypt.genSalt(10);
+      user.resetPasswordCode = await bcrypt.hash(code, salt);
+      user.resetPasswordExpires = Date.now() + 10 * 60 * 1000;
+      await user.save();
+
+      await sendSMS(`+254${suffix}`, `Hospital: Your password reset code is ${code}. It expires in 10 minutes.`);
+    }
+
+    res.json({ message: "If an account exists for this number, a reset code has been sent." });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @route POST /api/auth/reset-password
+// @desc  Verify the code and set a new password
+const resetPassword = async (req, res, next) => {
+  try {
+    const { phone, code, newPassword } = req.body;
+    if (!phone || !code || !newPassword) {
+      return res.status(400).json({ message: "phone, code and newPassword are required" });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters" });
+    }
+
+    const suffix = phoneSuffix(phone);
+    const user = await User.findOne({ phone: { $regex: suffix + "$" } }).select("+resetPasswordCode +resetPasswordExpires");
+    if (!user || !user.resetPasswordCode || !user.resetPasswordExpires) {
+      return res.status(400).json({ message: "Invalid or expired reset code" });
+    }
+    if (user.resetPasswordExpires < Date.now()) {
+      return res.status(400).json({ message: "This reset code has expired. Please request a new one." });
+    }
+
+    const isValidCode = await bcrypt.compare(code, user.resetPasswordCode);
+    if (!isValidCode) {
+      return res.status(400).json({ message: "Invalid or expired reset code" });
+    }
+
+    user.password = newPassword;
+    user.resetPasswordCode = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    res.json({ message: "Password reset successful. You can now log in with your new password." });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { register, login, getMe, forgotPassword, resetPassword };
