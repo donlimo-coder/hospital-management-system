@@ -21,6 +21,7 @@ const appointmentSchema = new mongoose.Schema(
       },
     ],
     followUpDate: { type: String },
+    source: { type: String, enum: ["online", "walk-in"], default: "online" },
   },
   { timestamps: true }
 );
