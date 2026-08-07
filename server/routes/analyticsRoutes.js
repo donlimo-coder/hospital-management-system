@@ -84,11 +84,11 @@ router.get("/dashboard", protect, authorize("admin"), async (req, res, next) => 
             as: "doctorInfo",
           },
         },
-        { $unwind: { path: "$doctorInfo", preserveNullAndEmptyArrays: true } },
+       { $unwind: "$doctorInfo" },
         {
           $project: {
             _id: 0,
-            doctor: { $ifNull: ["$doctorInfo.name", "Unknown"] },
+            doctor: "$doctorInfo.name",
             count: 1,
           },
         },
