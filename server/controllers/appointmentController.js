@@ -46,8 +46,7 @@ const createAppointment = async (req, res, next) => {
       date,
       time,
       reason,
-      source: ["admin", "doctor"].includes(req.user.role) ? "walk-in" : "online",
-    });
+     source: ["admin", "doctor"].includes(req.user.role) ? "walk-in" : "online",
     });
 
     // Fire off a booking confirmation SMS. This never blocks or fails the
