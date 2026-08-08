@@ -1,0 +1,120 @@
+.analytics-page {
+  --a-navy: #0f4c81;
+  --a-ink: #0b2540;
+  --a-mint: #eaf3f0;
+  --a-mint-line: #cfe3dc;
+  --a-amber: #e3a548;
+  --a-teal: #2a9d8f;
+  --a-muted: #5b6b7a;
+  max-width: 1280px;
+}
+
+.analytics-page h1 {
+  font-family: "Space Grotesk", "Inter", sans-serif;
+  color: var(--a-ink);
+}
+
+.analytics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.analytics-range-picker {
+  display: flex;
+  gap: 0.4rem;
+  background: var(--a-mint);
+  border: 1px solid var(--a-mint-line);
+  padding: 0.3rem;
+  border-radius: 10px;
+}
+
+.analytics-range-picker button {
+  border: none;
+  background: transparent;
+  padding: 0.45rem 0.9rem;
+  border-radius: 7px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--a-navy);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.analytics-range-picker button:hover {
+  background: rgba(15, 76, 129, 0.08);
+}
+
+.analytics-range-picker button.active {
+  background: var(--a-navy);
+  color: white;
+}
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 1.4rem;
+}
+
+.analytics-card {
+  background: white;
+  border: 1px solid #e6ebf0;
+  border-radius: 14px;
+  padding: 1.3rem 1.4rem 1rem;
+  box-shadow: 0 4px 18px -12px rgba(11, 37, 64, 0.25);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+  cursor: pointer;
+}
+
+.analytics-card:hover {
+  transform: scale(1.03);
+  box-shadow: 0 12px 30px -10px rgba(11, 37, 64, 0.35);
+  border-color: #cfe3dc;
+  z-index: 2;
+  position: relative;
+}
+
+.analytics-card h3 {
+  font-family: "Space Grotesk", "Inter", sans-serif;
+  font-size: 1.02rem;
+  color: var(--a-ink);
+  margin: 0 0 0.8rem;
+}
+
+.analytics-empty {
+  color: var(--a-muted);
+  font-size: 0.9rem;
+  padding: 3rem 0;
+  text-align: center;
+}
+
+.analytics-billing-amounts {
+  display: flex;
+  justify-content: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  margin-top: 0.4rem;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.78rem;
+}
+
+.billing-amount {
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.billing-amount.billing-paid { background: #e2f4f1; color: #1c6e63; }
+.billing-amount.billing-pending { background: #fbedd7; color: #8a5c17; }
+.billing-amount.billing-overdue { background: #fbe1e5; color: #a3283f; }
+
+@media (max-width: 900px) {
+  .analytics-grid {
+    grid-template-columns: 1fr;
+  }
+}

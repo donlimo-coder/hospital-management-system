@@ -9,6 +9,7 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import BookAppointment from "./pages/BookAppointment";
 import Reception from "./pages/Reception";
+import Analytics from "./pages/Analytics";
 import People from "./pages/People";
 import MyAvailability from "./pages/MyAvailability";
 import MyRecords from "./pages/MyRecords";
@@ -53,6 +54,14 @@ function App() {
           element={
             <ProtectedRoute roles={["admin"]}>
               <People />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/analytics"
+          element={
+            <ProtectedRoute roles={["admin"]}>
+              <Analytics />
             </ProtectedRoute>
           }
         />
