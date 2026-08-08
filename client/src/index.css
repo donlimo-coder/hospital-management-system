@@ -16,7 +16,21 @@ body {
 }
 .navbar-brand { color: white; text-decoration: none; font-weight: 700; font-size: 1.2rem; }
 .navbar-links { display: flex; gap: 1rem; align-items: center; }
-.navbar-links a { color: white; text-decoration: none; }
+.navbar-links a {
+  color: white;
+  text-decoration: none;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  display: inline-block;
+}
+
+.navbar-links a:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(1.06);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+}
 .navbar-links button {
   background: #e94560; color: white; border: none; padding: 0.4rem 0.9rem;
   border-radius: 6px; cursor: pointer;
