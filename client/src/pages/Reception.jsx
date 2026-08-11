@@ -95,8 +95,10 @@ const PatientReports = ({ patient }) => {
   );
 };
 
+const MEMBER_PREFIX = "HMS-";
+
 const Reception = () => {
-  const [memberNumber, setMemberNumber] = useState("");
+  const [memberDigits, setMemberDigits] = useState("");
   const [foundPatient, setFoundPatient] = useState(null);
   const [searchError, setSearchError] = useState("");
   const [searching, setSearching] = useState(false);
@@ -107,9 +109,15 @@ const Reception = () => {
   const [newPatient, setNewPatient] = useState(null);
 
   const [isEditing, setIsEditing] = useState(false);
-const [editForm, setEditForm] = useState({ name: "", age: "", gender: "male", phone: "", address: "", idType: "", idNumber: "" });
+  const [editForm, setEditForm] = useState({ name: "", age: "", gender: "male", phone: "", address: "", idType: "", idNumber: "" });
   const [editError, setEditError] = useState("");
   const [editSaving, setEditSaving] = useState(false);
+
+  const handleDigitsChange = (e) => {
+    // Only allow digits, cap at 6 (matches HMS-000001 style member numbers)
+    const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 6);
+    setMemberDigits(digitsOnly);
+  };
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -117,9 +125,16 @@ const [editForm, setEditForm] = useState({ name: "", age: "", gender: "male", ph
     setFoundPatient(null);
     setNewPatient(null);
     setIsEditing(false);
+
+    if (!memberDigits) {
+      setSearchError("Enter the member number digits.");
+      return;
+    }
+
+    const fullMemberNumber = `${MEMBER_PREFIX}${memberDigits.padStart(6, "0")}`;
     setSearching(true);
     try {
-      const { data } = await api.get(`/patients/member/${memberNumber.trim()}`);
+      const { data } = await api.get(`/patients/member/${fullMemberNumber}`);
       setFoundPatient(data.patient);
     } catch (err) {
       if (err.response?.status === 404) {
@@ -189,13 +204,20 @@ const [editForm, setEditForm] = useState({ name: "", age: "", gender: "male", ph
         <h2>Find Patient</h2>
         {searchError && <p className="form-error">{searchError}</p>}
         <label>Member Number</label>
-        <input
-          placeholder="e.g. HMS-000001"
-          required
-          value={memberNumber}
-          onChange={(e) => setMemberNumber(e.target.value)}
-        />
-        <button type="submit" disabled={searching}>
+        <div style={{ display: "flex", alignItems: "center", border: "1px solid #ccc", borderRadius: "6px", overflow: "hidden" }}>
+          <span style={{ padding: "0.5rem 0.4rem", background: "#eaf3f0", color: "#0f4c81", fontWeight: 600, fontFamily: "monospace" }}>
+            {MEMBER_PREFIX}
+          </span>
+          <input
+            placeholder="000001"
+            required
+            inputMode="numeric"
+            value={memberDigits}
+            onChange={handleDigitsChange}
+            style={{ border: "none", flex: 1, padding: "0.5rem", fontFamily: "monospace" }}
+          />
+        </div>
+        <button type="submit" disabled={searching} style={{ marginTop: "0.7rem" }}>
           {searching ? "Searching..." : "Search"}
         </button>
       </form>
@@ -315,4 +337,4 @@ const [editForm, setEditForm] = useState({ name: "", age: "", gender: "male", ph
   );
 };
 
-export default Reception;
+export default Reception; 
