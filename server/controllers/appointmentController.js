@@ -2,6 +2,14 @@ const Appointment = require("../models/Appointment");
 const Doctor = require("../models/Doctor");
 const Patient = require("../models/Patient");
 const { sendSMS } = require("../utils/sms");
+const { withClinicScope } = require("../utils/clinicScope");
+
+// Returns true if the doc's clinic matches req.clinicId, or req.clinicId is null
+// (super-admin viewing all clinics).
+const inScope = (doc, req) => {
+  if (req.clinicId === null || req.clinicId === undefined) return true;
+  return doc.clinic && doc.clinic.toString() === req.clinicId.toString();
+};
 
 // @route POST /api/appointments (patient, or admin/doctor booking on a patient's behalf)
 // @desc  Book an appointment. Prevents double-booking a doctor's slot.
@@ -13,7 +21,7 @@ const createAppointment = async (req, res, next) => {
     }
 
     const doctor = await Doctor.findById(doctorId);
-    if (!doctor) return res.status(404).json({ message: "Doctor not found" });
+    if (!doctor || !inScope(doctor, req)) return res.status(404).json({ message: "Doctor not found" });
     if (!doctor.isAcceptingPatients) {
       return res.status(400).json({ message: "This doctor is not currently accepting new appointments" });
     }
@@ -21,7 +29,7 @@ const createAppointment = async (req, res, next) => {
     // A logged-in patient books for themself; front-desk staff can book for
     // a walk-in patient by passing patientId (found via member number lookup).
     let targetPatientId;
-    if (["admin", "doctor"].includes(req.user.role)) {
+    if (["admin", "doctor", "superadmin"].includes(req.user.role)) {
       if (!patientId) {
         return res.status(400).json({ message: "patientId is required when staff book on a patient's behalf" });
       }
@@ -43,10 +51,11 @@ const createAppointment = async (req, res, next) => {
     const appointment = await Appointment.create({
       patient: targetPatientId,
       doctor: doctorId,
+      clinic: doctor.clinic,
       date,
       time,
       reason,
-     source: ["admin", "doctor"].includes(req.user.role) ? "walk-in" : "online",
+      source: ["admin", "doctor", "superadmin"].includes(req.user.role) ? "walk-in" : "online",
     });
 
     // Fire off a booking confirmation SMS. This never blocks or fails the
@@ -69,14 +78,15 @@ const createAppointment = async (req, res, next) => {
   }
 };
 
-// @route GET /api/appointments (role-aware: patient sees own, doctor sees own, admin sees all)
+// @route GET /api/appointments (role-aware: patient sees own, doctor sees own, admin sees all in clinic)
 const getAppointments = async (req, res, next) => {
   try {
-    const filter = {};
+    let filter = {};
     if (req.user.role === "patient") filter.patient = req.user.patientProfile;
     if (req.user.role === "doctor") filter.doctor = req.user.doctorProfile;
     if (req.query.status) filter.status = req.query.status;
     if (req.query.date) filter.date = req.query.date;
+    filter = withClinicScope(filter, req);
 
     const appointments = await Appointment.find(filter)
       .populate("patient", "name age gender")
@@ -94,11 +104,13 @@ const getAppointmentById = async (req, res, next) => {
     const appointment = await Appointment.findById(req.params.id)
       .populate("patient", "name age gender")
       .populate("doctor", "name specialization consultationFee");
-    if (!appointment) return res.status(404).json({ message: "Appointment not found" });
+    if (!appointment || !inScope(appointment, req)) {
+      return res.status(404).json({ message: "Appointment not found" });
+    }
 
     const isPatientOwner = req.user.role === "patient" && appointment.patient._id.toString() === req.user.patientProfile?.toString();
     const isDoctorOwner = req.user.role === "doctor" && appointment.doctor._id.toString() === req.user.doctorProfile?.toString();
-    if (req.user.role !== "admin" && !isPatientOwner && !isDoctorOwner) {
+    if (!["admin", "superadmin"].includes(req.user.role) && !isPatientOwner && !isDoctorOwner) {
       return res.status(403).json({ message: "Not authorized to view this appointment" });
     }
 
@@ -113,10 +125,12 @@ const getAppointmentById = async (req, res, next) => {
 const updateAppointment = async (req, res, next) => {
   try {
     const appointment = await Appointment.findById(req.params.id);
-    if (!appointment) return res.status(404).json({ message: "Appointment not found" });
+    if (!appointment || !inScope(appointment, req)) {
+      return res.status(404).json({ message: "Appointment not found" });
+    }
 
     const isDoctorOwner = req.user.role === "doctor" && appointment.doctor.toString() === req.user.doctorProfile?.toString();
-    if (req.user.role !== "admin" && !isDoctorOwner) {
+    if (!["admin", "superadmin"].includes(req.user.role) && !isDoctorOwner) {
       return res.status(403).json({ message: "Not authorized to update this appointment" });
     }
 
@@ -125,7 +139,7 @@ const updateAppointment = async (req, res, next) => {
       if (req.body[field] !== undefined) appointment[field] = req.body[field];
     });
 
-   await appointment.save();
+    await appointment.save();
     await appointment.populate("patient", "name age gender");
     await appointment.populate("doctor", "name specialization consultationFee");
     res.json({ appointment });
@@ -138,10 +152,12 @@ const updateAppointment = async (req, res, next) => {
 const cancelAppointment = async (req, res, next) => {
   try {
     const appointment = await Appointment.findById(req.params.id);
-    if (!appointment) return res.status(404).json({ message: "Appointment not found" });
+    if (!appointment || !inScope(appointment, req)) {
+      return res.status(404).json({ message: "Appointment not found" });
+    }
 
     const isPatientOwner = req.user.role === "patient" && appointment.patient.toString() === req.user.patientProfile?.toString();
-    if (req.user.role !== "admin" && !isPatientOwner) {
+    if (!["admin", "superadmin"].includes(req.user.role) && !isPatientOwner) {
       return res.status(403).json({ message: "Not authorized to cancel this appointment" });
     }
 
@@ -160,7 +176,9 @@ const sendReminder = async (req, res, next) => {
     const appointment = await Appointment.findById(req.params.id)
       .populate("patient", "name phone")
       .populate("doctor", "name");
-    if (!appointment) return res.status(404).json({ message: "Appointment not found" });
+    if (!appointment || !inScope(appointment, req)) {
+      return res.status(404).json({ message: "Appointment not found" });
+    }
 
     if (!appointment.patient?.phone) {
       return res.status(400).json({ message: "This patient has no phone number on file" });

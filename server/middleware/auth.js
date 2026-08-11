@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
-// Verifies JWT and attaches the user to req.user
+// Verifies JWT and attaches the user (and their clinic) to the request
 const protect = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
@@ -18,6 +18,17 @@ const protect = async (req, res, next) => {
     }
 
     req.user = user;
+
+    if (user.role === "superadmin") {
+      // Super-admin sees all clinics by default (req.clinicId = null means "no filter").
+      // They can optionally scope to one clinic via ?clinicId=xxx
+      req.clinicId = req.query.clinicId || null;
+    } else {
+      // Always trust the user's current clinic from the DB, not the token's
+      // clinicId claim, in case they were ever reassigned to another clinic.
+      req.clinicId = user.clinic;
+    }
+
     next();
   } catch (err) {
     return res.status(401).json({ message: "Not authorized, token invalid or expired" });

@@ -1,5 +1,13 @@
 const Patient = require("../models/Patient");
 const cloudinary = require("../config/cloudinary");
+const { withClinicScope } = require("../utils/clinicScope");
+
+// Returns true if the patient belongs to req.clinicId, or req.clinicId is null
+// (super-admin viewing all clinics).
+const patientInScope = (patient, req) => {
+  if (req.clinicId === null || req.clinicId === undefined) return true;
+  return patient.clinic && patient.clinic.toString() === req.clinicId.toString();
+};
 
 // @route GET /api/patients (admin, doctor)
 const getPatients = async (req, res, next) => {
@@ -8,7 +16,7 @@ const getPatients = async (req, res, next) => {
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);
     const skip = (page - 1) * limit;
 
-    const filter = {};
+    let filter = {};
     if (req.query.search) {
       const search = req.query.search.trim();
       filter.$or = [
@@ -18,6 +26,7 @@ const getPatients = async (req, res, next) => {
         { idNumber: new RegExp(search, "i") },
       ];
     }
+    filter = withClinicScope(filter, req);
 
     const [patients, total] = await Promise.all([
       Patient.find(filter).skip(skip).limit(limit).sort({ name: 1 }),
@@ -34,10 +43,12 @@ const getPatients = async (req, res, next) => {
 const getPatientById = async (req, res, next) => {
   try {
     const patient = await Patient.findById(req.params.id);
-    if (!patient) return res.status(404).json({ message: "Patient not found" });
+    if (!patient || !patientInScope(patient, req)) {
+      return res.status(404).json({ message: "Patient not found" });
+    }
 
     const isOwner = req.user.patientProfile && req.user.patientProfile.toString() === patient._id.toString();
-    if (!["admin", "doctor"].includes(req.user.role) && !isOwner) {
+    if (!["admin", "doctor", "superadmin"].includes(req.user.role) && !isOwner) {
       return res.status(403).json({ message: "Not authorized to view this patient record" });
     }
 
@@ -51,10 +62,12 @@ const getPatientById = async (req, res, next) => {
 const updatePatient = async (req, res, next) => {
   try {
     const patient = await Patient.findById(req.params.id);
-    if (!patient) return res.status(404).json({ message: "Patient not found" });
+    if (!patient || !patientInScope(patient, req)) {
+      return res.status(404).json({ message: "Patient not found" });
+    }
 
     const isOwner = req.user.patientProfile && req.user.patientProfile.toString() === patient._id.toString();
-    if (!["admin", "doctor"].includes(req.user.role) && !isOwner) {
+    if (!["admin", "doctor", "superadmin"].includes(req.user.role) && !isOwner) {
       return res.status(403).json({ message: "Not authorized to update this patient record" });
     }
 
@@ -64,7 +77,7 @@ const updatePatient = async (req, res, next) => {
     });
 
     // Only doctors/admins can append medical history entries
-    if (req.body.medicalHistoryEntry && ["admin", "doctor"].includes(req.user.role)) {
+    if (req.body.medicalHistoryEntry && ["admin", "doctor", "superadmin"].includes(req.user.role)) {
       patient.medicalHistory.push(req.body.medicalHistoryEntry);
     }
 
@@ -81,10 +94,12 @@ const updatePatient = async (req, res, next) => {
 const uploadReport = async (req, res, next) => {
   try {
     const patient = await Patient.findById(req.params.id);
-    if (!patient) return res.status(404).json({ message: "Patient not found" });
+    if (!patient || !patientInScope(patient, req)) {
+      return res.status(404).json({ message: "Patient not found" });
+    }
 
     const isOwner = req.user.patientProfile && req.user.patientProfile.toString() === patient._id.toString();
-    if (!["admin", "doctor"].includes(req.user.role) && !isOwner) {
+    if (!["admin", "doctor", "superadmin"].includes(req.user.role) && !isOwner) {
       return res.status(403).json({ message: "Not authorized to upload reports for this patient" });
     }
 
@@ -109,11 +124,13 @@ const uploadReport = async (req, res, next) => {
 // @route GET /api/patients/:id/reports
 const getReports = async (req, res, next) => {
   try {
-    const patient = await Patient.findById(req.params.id).select("reports");
-    if (!patient) return res.status(404).json({ message: "Patient not found" });
+    const patient = await Patient.findById(req.params.id).select("reports clinic");
+    if (!patient || !patientInScope(patient, req)) {
+      return res.status(404).json({ message: "Patient not found" });
+    }
 
     const isOwner = req.user.patientProfile && req.user.patientProfile.toString() === patient._id.toString();
-    if (!["admin", "doctor"].includes(req.user.role) && !isOwner) {
+    if (!["admin", "doctor", "superadmin"].includes(req.user.role) && !isOwner) {
       return res.status(403).json({ message: "Not authorized to view these reports" });
     }
 
@@ -127,13 +144,15 @@ const getReports = async (req, res, next) => {
 const deleteReport = async (req, res, next) => {
   try {
     const patient = await Patient.findById(req.params.id);
-    if (!patient) return res.status(404).json({ message: "Patient not found" });
+    if (!patient || !patientInScope(patient, req)) {
+      return res.status(404).json({ message: "Patient not found" });
+    }
 
     const report = patient.reports.id(req.params.reportId);
     if (!report) return res.status(404).json({ message: "Report not found" });
 
     const isOwner = req.user.patientProfile && req.user.patientProfile.toString() === patient._id.toString();
-    if (!["admin", "doctor"].includes(req.user.role) && !isOwner) {
+    if (!["admin", "doctor", "superadmin"].includes(req.user.role) && !isOwner) {
       return res.status(403).json({ message: "Not authorized to delete this report" });
     }
 
@@ -159,6 +178,13 @@ const createWalkInPatient = async (req, res, next) => {
       return res.status(400).json({ message: "Patient name is required" });
     }
 
+    // Normal staff always create within their own clinic (req.clinicId).
+    // Super-admin (req.clinicId null) must specify which clinic via body.
+    const clinic = req.clinicId || req.body.clinicId;
+    if (!clinic) {
+      return res.status(400).json({ message: "clinicId is required when creating as super-admin" });
+    }
+
     const patient = await Patient.create({
       name,
       age,
@@ -167,6 +193,7 @@ const createWalkInPatient = async (req, res, next) => {
       address,
       idType,
       idNumber,
+      clinic,
       registeredBy: req.user._id,
     });
 
@@ -181,7 +208,8 @@ const createWalkInPatient = async (req, res, next) => {
 const getPatientByMemberNumber = async (req, res, next) => {
   try {
     const memberNumber = req.params.memberNumber.trim().toUpperCase();
-    const patient = await Patient.findOne({ memberNumber });
+    const filter = withClinicScope({ memberNumber }, req);
+    const patient = await Patient.findOne(filter);
     if (!patient) {
       return res.status(404).json({ message: "No patient found with that member number" });
     }

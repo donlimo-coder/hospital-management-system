@@ -1,5 +1,13 @@
 const Doctor = require("../models/Doctor");
 const Appointment = require("../models/Appointment");
+const { withClinicScope } = require("../utils/clinicScope");
+
+// Returns true if the doc's clinic matches req.clinicId, or req.clinicId is null
+// (super-admin viewing all clinics).
+const inScope = (doc, req) => {
+  if (req.clinicId === null || req.clinicId === undefined) return true;
+  return doc.clinic && doc.clinic.toString() === req.clinicId.toString();
+};
 
 const DAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const SLOT_MINUTES = 30;
@@ -23,7 +31,7 @@ const getDoctorAvailability = async (req, res, next) => {
     if (!date) return res.status(400).json({ message: "date (YYYY-MM-DD) is required" });
 
     const doctor = await Doctor.findById(req.params.id);
-    if (!doctor) return res.status(404).json({ message: "Doctor not found" });
+    if (!doctor || !inScope(doctor, req)) return res.status(404).json({ message: "Doctor not found" });
 
     const dayAbbr = DAY_ABBR[new Date(`${date}T00:00:00Z`).getUTCDay()];
     const windows = doctor.availability.filter((a) => a.day === dayAbbr);
@@ -60,10 +68,11 @@ const getDoctorAvailability = async (req, res, next) => {
 // @desc  List doctors, optionally filtered by specialization (?specialization=Cardiologist)
 const getDoctors = async (req, res, next) => {
   try {
-    const filter = {};
+    let filter = {};
     if (req.query.specialization) {
       filter.specialization = new RegExp(req.query.specialization, "i");
     }
+    filter = withClinicScope(filter, req);
 
     const page = Math.max(parseInt(req.query.page) || 1, 1);
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);
@@ -83,7 +92,7 @@ const getDoctors = async (req, res, next) => {
 const getDoctorById = async (req, res, next) => {
   try {
     const doctor = await Doctor.findById(req.params.id);
-    if (!doctor) return res.status(404).json({ message: "Doctor not found" });
+    if (!doctor || !inScope(doctor, req)) return res.status(404).json({ message: "Doctor not found" });
     res.json({ doctor });
   } catch (err) {
     next(err);
@@ -94,10 +103,10 @@ const getDoctorById = async (req, res, next) => {
 const updateDoctor = async (req, res, next) => {
   try {
     const doctor = await Doctor.findById(req.params.id);
-    if (!doctor) return res.status(404).json({ message: "Doctor not found" });
+    if (!doctor || !inScope(doctor, req)) return res.status(404).json({ message: "Doctor not found" });
 
     const isOwner = req.user.doctorProfile && req.user.doctorProfile.toString() === doctor._id.toString();
-    if (req.user.role !== "admin" && !isOwner) {
+    if (!["admin", "superadmin"].includes(req.user.role) && !isOwner) {
       return res.status(403).json({ message: "Not authorized to update this doctor profile" });
     }
 
@@ -123,8 +132,10 @@ const updateDoctor = async (req, res, next) => {
 // @route DELETE /api/doctors/:id (admin only)
 const deleteDoctor = async (req, res, next) => {
   try {
-    const doctor = await Doctor.findByIdAndDelete(req.params.id);
-    if (!doctor) return res.status(404).json({ message: "Doctor not found" });
+    const doctor = await Doctor.findById(req.params.id);
+    if (!doctor || !inScope(doctor, req)) return res.status(404).json({ message: "Doctor not found" });
+
+    await doctor.deleteOne();
     res.json({ message: "Doctor removed" });
   } catch (err) {
     next(err);

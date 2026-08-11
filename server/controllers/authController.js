@@ -9,9 +9,17 @@ const phoneSuffix = (phone) => phone.replace(/\D/g, "").slice(-9);
 const User = require("../models/User");
 const Doctor = require("../models/Doctor");
 const Patient = require("../models/Patient");
+const Clinic = require("../models/Clinic");
 
-const signToken = (id) =>
-  jwt.sign({ id }, process.env.JWT_SECRET, {
+// The single clinic every new registration is assigned to until the
+// frontend has a proper clinic picker. Revisit when Feature 9 adds
+// multi-clinic registration flows.
+const DEFAULT_CLINIC_CODE = "KMC001";
+
+// Token now carries clinicId alongside the user id, so every authenticated
+// request can be scoped to the correct clinic without an extra DB lookup.
+const signToken = (user) =>
+  jwt.sign({ id: user._id, clinicId: user.clinic }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || "7d",
   });
 
@@ -30,6 +38,11 @@ const register = async (req, res, next) => {
       return res.status(409).json({ message: "An account with this email already exists" });
     }
 
+    const defaultClinic = await Clinic.findOne({ clinicCode: DEFAULT_CLINIC_CODE });
+    if (!defaultClinic) {
+      return res.status(500).json({ message: "Default clinic is not configured. Contact an administrator." });
+    }
+
     // Only admins should be able to create other admins/doctors in a real system.
     // For this MVP, self-registration is allowed but doctor accounts should
     // normally be provisioned by an admin. We keep it open for demo purposes.
@@ -39,6 +52,7 @@ const register = async (req, res, next) => {
       password,
       role: role || "patient",
       phone,
+      clinic: defaultClinic._id,
     });
 
     if (user.role === "doctor") {
@@ -59,11 +73,12 @@ const register = async (req, res, next) => {
         gender: patientInfo?.gender,
         address: patientInfo?.address,
         phone,
+        clinic: defaultClinic._id,
       });
       user.patientProfile = patient._id;
       await user.save();
     }
-    const token = signToken(user._id);
+    const token = signToken(user);
     res.status(201).json({ token, user: user.toSafeObject() });
   } catch (err) {
     next(err);
@@ -87,7 +102,7 @@ const login = async (req, res, next) => {
       return res.status(403).json({ message: "This account has been deactivated" });
     }
 
-    const token = signToken(user._id);
+    const token = signToken(user);
     res.json({ token, user: user.toSafeObject() });
   } catch (err) {
     next(err);

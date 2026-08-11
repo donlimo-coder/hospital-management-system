@@ -1,4 +1,5 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const { protect, authorize } = require("../middleware/auth");
 const Doctor = require("../models/Doctor");
 const Patient = require("../models/Patient");
@@ -18,15 +19,23 @@ function getCutoffDateStr(days) {
   return d.toISOString().slice(0, 10);
 }
 
-// @route GET /api/analytics/dashboard?days=30 (admin only)
+// Returns a $match-ready clinic filter: {} for super-admin viewing all
+// clinics (req.clinicId null), or { clinic: ObjectId } otherwise.
+function getClinicMatch(req) {
+  if (req.clinicId === null || req.clinicId === undefined) return {};
+  return { clinic: new mongoose.Types.ObjectId(req.clinicId) };
+}
+
+// @route GET /api/analytics/dashboard?days=30 (admin, superadmin)
 // @desc  Combined payload for all analytics dashboard charts
-router.get("/dashboard", protect, authorize("admin"), async (req, res, next) => {
+router.get("/dashboard", protect, authorize("admin", "superadmin"), async (req, res, next) => {
   try {
     const cutoffDateStr = getCutoffDateStr(req.query.days);
-    const appointmentDateMatch = cutoffDateStr ? { date: { $gte: cutoffDateStr } } : {};
+    const clinicMatch = getClinicMatch(req);
+    const appointmentDateMatch = { ...clinicMatch, ...(cutoffDateStr ? { date: { $gte: cutoffDateStr } } : {}) };
 
     const cutoffDateObj = cutoffDateStr ? new Date(cutoffDateStr) : null;
-    const billDateMatch = cutoffDateObj ? { createdAt: { $gte: cutoffDateObj } } : {};
+    const billDateMatch = { ...clinicMatch, ...(cutoffDateObj ? { createdAt: { $gte: cutoffDateObj } } : {}) };
 
     const overdueThreshold = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
@@ -84,7 +93,7 @@ router.get("/dashboard", protect, authorize("admin"), async (req, res, next) => 
             as: "doctorInfo",
           },
         },
-       { $unwind: "$doctorInfo" },
+        { $unwind: "$doctorInfo" },
         {
           $project: {
             _id: 0,
@@ -97,13 +106,14 @@ router.get("/dashboard", protect, authorize("admin"), async (req, res, next) => 
 
       // 4. Patient demographics: gender breakdown
       Patient.aggregate([
+        { $match: clinicMatch },
         { $group: { _id: { $ifNull: ["$gender", "unknown"] }, count: { $sum: 1 } } },
         { $project: { _id: 0, gender: "$_id", count: 1 } },
       ]),
 
       // 4b. Patient demographics: age groups
       Patient.aggregate([
-        { $match: { age: { $ne: null } } },
+        { $match: { ...clinicMatch, age: { $ne: null } } },
         {
           $bucket: {
             groupBy: "$age",

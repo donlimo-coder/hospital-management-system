@@ -4,6 +4,7 @@ const billSchema = new mongoose.Schema(
   {
     appointment: { type: mongoose.Schema.Types.ObjectId, ref: "Appointment", required: true },
     patient: { type: mongoose.Schema.Types.ObjectId, ref: "Patient", required: true },
+    clinic: { type: mongoose.Schema.Types.ObjectId, ref: "Clinic" },
     consultationFee: { type: Number, required: true, default: 0 },
     medicineCharges: { type: Number, default: 0 },
     labCharges: { type: Number, default: 0 },

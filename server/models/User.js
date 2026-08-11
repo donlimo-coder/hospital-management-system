@@ -8,9 +8,10 @@ const userSchema = new mongoose.Schema(
     password: { type: String, required: true, minlength: 6, select: false },
     role: {
       type: String,
-      enum: ["admin", "doctor", "patient"],
+      enum: ["admin", "doctor", "patient", "superadmin"],
       default: "patient",
     },
+    clinic: { type: mongoose.Schema.Types.ObjectId, ref: "Clinic" },
     phone: { type: String, trim: true },
     isActive: { type: Boolean, default: true },
     resetPasswordCode: { type: String, select: false },

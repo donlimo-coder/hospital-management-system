@@ -6,7 +6,8 @@ const patientSchema = new mongoose.Schema(
     // Optional: only set if the patient has an online login account.
     // Walk-in patients registered by reception may not have one.
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", unique: true, sparse: true },
-    memberNumber: { type: String, unique: true }, // e.g. "HMS-000123" — auto-generated
+    memberNumber: { type: String, unique: true }, // e.g. "HMS-000123" - auto-generated
+    clinic: { type: mongoose.Schema.Types.ObjectId, ref: "Clinic" },
     name: { type: String, required: true },
     age: { type: Number, min: 0 },
     gender: { type: String, enum: ["male", "female", "other"] },
