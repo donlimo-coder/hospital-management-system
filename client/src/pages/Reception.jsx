@@ -97,6 +97,13 @@ const PatientReports = ({ patient }) => {
 
 const MEMBER_PREFIX = "HMS-";
 
+const idNumberLabel = (idType) => {
+  if (idType === "passport") return "Passport Number";
+  if (idType === "birth_certificate") return "Birth Certificate Number";
+  if (idType === "national_id") return "National ID Number";
+  return "ID Number";
+};
+
 const Reception = () => {
   const [memberDigits, setMemberDigits] = useState("");
   const [foundPatient, setFoundPatient] = useState(null);
@@ -224,7 +231,7 @@ const Reception = () => {
 
       {foundPatient && (
         <>
-          <div className="auth-card" style={{ marginTop: "1rem" }}>
+          <div className="auth-card" style={{ marginTop: "1rem", maxWidth: isEditing ? "650px" : undefined }}>
             <h2>Patient Found</h2>
             {!isEditing ? (
               <>
@@ -242,30 +249,76 @@ const Reception = () => {
             ) : (
               <form onSubmit={handleEditSave}>
                 {editError && <p className="form-error">{editError}</p>}
-                <label>Full Name</label>
-                <input required value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
-                <label>Age</label>
-                <input type="number" value={editForm.age} onChange={(e) => setEditForm({ ...editForm, age: e.target.value })} />
-                <label>Gender</label>
-                <select value={editForm.gender} onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
-                </select>
-                <label>Phone</label>
-                <input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
-                <label>Address</label>
-                <input value={editForm.address} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} />
-                <label>ID Type</label>
-                <select value={editForm.idType} onChange={(e) => setEditForm({ ...editForm, idType: e.target.value })}>
-                  <option value="">— Select —</option>
-                  <option value="national_id">National ID</option>
-                  <option value="passport">Passport</option>
-                  <option value="birth_certificate">Birth Certificate</option>
-                </select>
-                <label>ID Number</label>
-                <input value={editForm.idNumber} onChange={(e) => setEditForm({ ...editForm, idNumber: e.target.value })} />
-                <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.7rem" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.9rem 1.2rem" }}>
+                  <div>
+                    <label>Full Name</label>
+                    <input
+                      required
+                      value={editForm.name}
+                      onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                      style={{ width: "100%", boxSizing: "border-box" }}
+                    />
+                  </div>
+                  <div>
+                    <label>Age</label>
+                    <input
+                      type="number"
+                      value={editForm.age}
+                      onChange={(e) => setEditForm({ ...editForm, age: e.target.value })}
+                      style={{ width: "100%", boxSizing: "border-box" }}
+                    />
+                  </div>
+                  <div>
+                    <label>Gender</label>
+                    <select
+                      value={editForm.gender}
+                      onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
+                      style={{ width: "100%", boxSizing: "border-box" }}
+                    >
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label>Phone</label>
+                    <input
+                      value={editForm.phone}
+                      onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                      style={{ width: "100%", boxSizing: "border-box" }}
+                    />
+                  </div>
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <label>Address</label>
+                    <input
+                      value={editForm.address}
+                      onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                      style={{ width: "100%", boxSizing: "border-box" }}
+                    />
+                  </div>
+                  <div>
+                    <label>ID Type</label>
+                    <select
+                      value={editForm.idType}
+                      onChange={(e) => setEditForm({ ...editForm, idType: e.target.value, idNumber: "" })}
+                      style={{ width: "100%", boxSizing: "border-box" }}
+                    >
+                      <option value="">— Select —</option>
+                      <option value="national_id">National ID</option>
+                      <option value="passport">Passport</option>
+                      <option value="birth_certificate">Birth Certificate</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label>{idNumberLabel(editForm.idType)}</label>
+                    <input
+                      value={editForm.idNumber}
+                      onChange={(e) => setEditForm({ ...editForm, idNumber: e.target.value })}
+                      style={{ width: "100%", boxSizing: "border-box" }}
+                    />
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: "0.5rem", marginTop: "1.1rem" }}>
                   <button type="submit" disabled={editSaving}>
                     {editSaving ? "Saving..." : "Save Changes"}
                   </button>
@@ -337,4 +390,4 @@ const Reception = () => {
   );
 };
 
-export default Reception; 
+export default Reception;
