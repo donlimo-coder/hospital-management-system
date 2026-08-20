@@ -2,6 +2,12 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
+const ID_TYPE_LABELS = {
+  national_id: "National ID Number",
+  passport: "Passport Number",
+  birth_certificate: "Birth Certificate Number",
+};
+
 const Register = () => {
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -15,6 +21,8 @@ const Register = () => {
     consultationFee: "",
     age: "",
     gender: "male",
+    idType: "national_id",
+    idNumber: "",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -38,7 +46,12 @@ const Register = () => {
         };
       }
       if (form.role === "patient") {
-        payload.patientInfo = { age: Number(form.age) || undefined, gender: form.gender };
+        payload.patientInfo = {
+          age: Number(form.age) || undefined,
+          gender: form.gender,
+          idType: form.idType,
+          idNumber: form.idNumber,
+        };
       }
       await register(payload);
       navigate("/dashboard");
@@ -105,12 +118,30 @@ const Register = () => {
           <>
             <label>Age</label>
             <input type="number" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} />
+
             <label>Gender</label>
             <select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}>
               <option value="male">Male</option>
               <option value="female">Female</option>
               <option value="other">Other</option>
             </select>
+
+            <label>ID Type</label>
+            <select
+              value={form.idType}
+              onChange={(e) => setForm({ ...form, idType: e.target.value, idNumber: "" })}
+            >
+              <option value="national_id">National ID</option>
+              <option value="passport">Passport</option>
+              <option value="birth_certificate">Birth Certificate</option>
+            </select>
+
+            <label>{ID_TYPE_LABELS[form.idType]}</label>
+            <input
+              required
+              value={form.idNumber}
+              onChange={(e) => setForm({ ...form, idNumber: e.target.value })}
+            />
           </>
         )}
 

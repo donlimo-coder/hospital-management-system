@@ -196,7 +196,7 @@ const Reception = () => {
       });
       setNewPatient(data.patient);
       setShowRegisterForm(false);
-      setForm({ name: "", age: "", gender: "male", phone: "", address: "" });
+      setForm({ name: "", age: "", gender: "male", phone: "", address: "", idType: "", idNumber: "" });
     } catch (err) {
       setRegisterError(err.response?.data?.message || "Registration failed");
     }
@@ -365,18 +365,16 @@ const Reception = () => {
 
           <label>Address</label>
           <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
-
           <label>ID Type</label>
-          <select value={form.idType} onChange={(e) => setForm({ ...form, idType: e.target.value })}>
+          <select value={form.idType} onChange={(e) => setForm({ ...form, idType: e.target.value, idNumber: "" })}>
             <option value="">— Select —</option>
             <option value="national_id">National ID</option>
             <option value="passport">Passport</option>
             <option value="birth_certificate">Birth Certificate</option>
           </select>
 
-          <label>ID Number</label>
+          <label>{idNumberLabel(form.idType)}</label>
           <input value={form.idNumber} onChange={(e) => setForm({ ...form, idNumber: e.target.value })} />
-
           <button type="submit">Register & Get Member Number</button>
         </form>
       )}

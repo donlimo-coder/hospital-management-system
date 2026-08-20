@@ -65,13 +65,15 @@ const register = async (req, res, next) => {
       });
       user.doctorProfile = doctor._id;
       await user.save();
-    } else if (user.role === "patient") {
+        } else if (user.role === "patient") {
         const patient = await Patient.create({
         user: user._id,
         name,
         age: patientInfo?.age,
         gender: patientInfo?.gender,
         address: patientInfo?.address,
+        idType: patientInfo?.idType,
+        idNumber: patientInfo?.idNumber,
         phone,
         clinic: defaultClinic._id,
       });
