@@ -14,7 +14,7 @@ const Clinic = require("../models/Clinic");
 // The single clinic every new registration is assigned to until the
 // frontend has a proper clinic picker. Revisit when Feature 9 adds
 // multi-clinic registration flows.
-const DEFAULT_CLINIC_CODE = "KMC001";
+const DEFAULT_CLINIC_CODE = "DEMO01";
 
 // Token now carries clinicId alongside the user id, so every authenticated
 // request can be scoped to the correct clinic without an extra DB lookup.
