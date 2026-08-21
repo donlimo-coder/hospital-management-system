@@ -5,6 +5,7 @@ import api from "../services/api";
 const BookAppointment = () => {
   const [doctors, setDoctors] = useState([]);
   const [specialization, setSpecialization] = useState("");
+  const [specializationOptions, setSpecializationOptions] = useState([]);
   const [doctorId, setDoctorId] = useState("");
   const [date, setDate] = useState("");
   const [reason, setReason] = useState("");
@@ -17,6 +18,18 @@ const BookAppointment = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const navigate = useNavigate();
+
+  // Fetch the full doctor list once (unfiltered) just to build the
+  // specialization suggestion list, so patients see real options
+  // even if they don't know the exact spelling.
+  useEffect(() => {
+    api.get("/doctors").then((res) => {
+      const unique = Array.from(
+        new Set((res.data.doctors || []).map((d) => d.specialization).filter(Boolean))
+      ).sort((a, b) => a.localeCompare(b));
+      setSpecializationOptions(unique);
+    });
+  }, []);
 
   useEffect(() => {
     api.get("/doctors", { params: specialization ? { specialization } : {} }).then((res) => setDoctors(res.data.doctors));
@@ -64,10 +77,16 @@ const BookAppointment = () => {
 
         <label>Filter by specialization</label>
         <input
+          list="specialization-options"
           placeholder="e.g. Cardiologist"
           value={specialization}
           onChange={(e) => setSpecialization(e.target.value)}
         />
+        <datalist id="specialization-options">
+          {specializationOptions.map((s) => (
+            <option key={s} value={s} />
+          ))}
+        </datalist>
 
         <label>Doctor</label>
         <select required value={doctorId} onChange={(e) => setDoctorId(e.target.value)}>
