@@ -1,7 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import { Receipt, Banknote, ClipboardCheck, Clock, FileText } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
+import StatCard from "../components/ui/StatCard";
+
+const initialsOf = (name = "") =>
+  name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0].toUpperCase()).join("") || "?";
 
 const GenerateBillForm = ({ appointment, onGenerated }) => {
   const [medicineCharges, setMedicineCharges] = useState("");
@@ -30,12 +36,23 @@ const GenerateBillForm = ({ appointment, onGenerated }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap", marginTop: "0.4rem" }}>
-      {error && <p className="form-error" style={{ width: "100%" }}>{error}</p>}
-      <input type="number" placeholder="Medicine (KSh)" value={medicineCharges} onChange={(e) => setMedicineCharges(e.target.value)} style={{ width: "130px" }} />
-      <input type="number" placeholder="Lab (KSh)" value={labCharges} onChange={(e) => setLabCharges(e.target.value)} style={{ width: "110px" }} />
-      <input type="number" placeholder="Discount (KSh)" value={discount} onChange={(e) => setDiscount(e.target.value)} style={{ width: "130px" }} />
-      <button type="submit" disabled={saving}>{saving ? "Generating..." : "Generate Bill"}</button>
+    <form onSubmit={handleSubmit} className="bill-form">
+      {error && <p className="form-error">{error}</p>}
+      <div className="field">
+        <label>Medicine (KSh)</label>
+        <input type="number" placeholder="0" value={medicineCharges} onChange={(e) => setMedicineCharges(e.target.value)} />
+      </div>
+      <div className="field">
+        <label>Lab (KSh)</label>
+        <input type="number" placeholder="0" value={labCharges} onChange={(e) => setLabCharges(e.target.value)} />
+      </div>
+      <div className="field">
+        <label>Discount (KSh)</label>
+        <input type="number" placeholder="0" value={discount} onChange={(e) => setDiscount(e.target.value)} />
+      </div>
+      <button type="submit" className="btn-dark" disabled={saving}>
+        <Receipt size={16} /> {saving ? "Generating..." : "Generate Bill"}
+      </button>
     </form>
   );
 };
@@ -48,15 +65,18 @@ const Bills = () => {
 
   const loadData = async () => {
     setLoading(true);
-    const billsRes = await api.get("/bills");
-    setBills(billsRes.data.bills);
+    try {
+      const billsRes = await api.get("/bills");
+      setBills(billsRes.data.bills);
 
-    if (["admin", "doctor"].includes(user.role)) {
-      const apptRes = await api.get("/appointments", { params: { status: "completed" } });
-      const billedApptIds = new Set(billsRes.data.bills.map((b) => b.appointment?._id));
-      setUnbilledAppointments(apptRes.data.appointments.filter((a) => !billedApptIds.has(a._id)));
+      if (["admin", "doctor"].includes(user.role)) {
+        const apptRes = await api.get("/appointments", { params: { status: "completed" } });
+        const billedApptIds = new Set(billsRes.data.bills.map((b) => b.appointment?._id));
+        setUnbilledAppointments(apptRes.data.appointments.filter((a) => !billedApptIds.has(a._id)));
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -69,68 +89,121 @@ const Bills = () => {
     setBills((prev) => prev.map((b) => (b._id === id ? { ...b, isPaid: true } : b)));
   };
 
-  if (loading) return <div className="page"><p>Loading bills...</p></div>;
+  // Summary numbers are added up from the real bills
+  const totalBilled = bills.reduce((s, b) => s + (Number(b.total) || 0), 0);
+  const totalPaid = bills.filter((b) => b.isPaid).reduce((s, b) => s + (Number(b.total) || 0), 0);
+  const outstanding = totalBilled - totalPaid;
+  const isStaff = ["admin", "doctor"].includes(user.role);
 
   return (
     <div className="page">
-      <h1>Billing</h1>
+      <div className="page-header">
+        <div>
+          <h1>Billing</h1>
+          <p>{user.role === "patient" ? "Your bills and receipts." : "Generate bills for completed visits and track payments."}</p>
+        </div>
+      </div>
 
-      {["admin", "doctor"].includes(user.role) && (
-        <div className="auth-card" style={{ maxWidth: "700px" }}>
-          <h2>Completed Visits Awaiting a Bill</h2>
+      <div className="stat-grid-v2">
+        <StatCard index={0} loading={loading} title={user.role === "patient" ? "My bills" : "Total bills"} value={bills.length} icon={Receipt} />
+        <StatCard index={1} loading={loading} title="Total billed" prefix="KSh " value={totalBilled} icon={Banknote} />
+        <StatCard index={2} loading={loading} title="Paid" prefix="KSh " value={totalPaid} icon={ClipboardCheck} tone="success" />
+        <StatCard index={3} loading={loading} title="Outstanding" prefix="KSh " value={outstanding} icon={Clock} tone="warning" />
+      </div>
+
+      {isStaff && !loading && (
+        <motion.div
+          className="glass-card"
+          style={{ marginTop: 16 }}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.15 }}
+        >
+          <h2 className="card-title">
+            <FileText size={20} /> Completed Visits Awaiting a Bill
+          </h2>
           {unbilledAppointments.length === 0 ? (
-            <p>All completed appointments have been billed.</p>
+            <div className="empty-state" style={{ padding: "16px 0" }}>All completed appointments have been billed.</div>
           ) : (
             unbilledAppointments.map((a) => (
-              <div key={a._id} style={{ borderBottom: "1px solid #eee", paddingBottom: "0.6rem", marginBottom: "0.6rem" }}>
-                <p style={{ margin: 0 }}>
-                  <strong>{a.patient?.name}</strong> — {a.date} — Dr. {a.doctor?.name} (KSh {a.doctor?.consultationFee} consultation)
-                </p>
+              <div key={a._id} className="bill-row">
+                <div className="bill-info">
+                  <span className="avatar-sm">{initialsOf(a.patient?.name)}</span>
+                  <div>
+                    {a.patient?.name}
+                    <small>
+                      {a.date} · Dr. {a.doctor?.name} · KSh {a.doctor?.consultationFee} consultation
+                    </small>
+                  </div>
+                </div>
                 <GenerateBillForm appointment={a} onGenerated={() => loadData()} />
               </div>
             ))
           )}
-        </div>
+        </motion.div>
       )}
 
-      <div className="auth-card" style={{ maxWidth: "700px", marginTop: "1rem" }}>
-        <h2>{user.role === "patient" ? "My Bills" : "All Bills"}</h2>
-        {bills.length === 0 ? (
-          <p>No bills yet.</p>
-        ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                {user.role !== "patient" && <th>Patient</th>}
-                <th>Doctor</th>
-                <th>Total (KSh)</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bills.map((b) => (
-                <tr key={b._id}>
-                  {user.role !== "patient" && <td>{b.patient?.name}</td>}
-                  <td>{b.appointment?.doctor?.name || "—"}</td>
-                  <td>{b.total}</td>
-                  <td>
-                    <span className={`badge ${b.isPaid ? "badge-completed" : "badge-pending"}`}>
-                      {b.isPaid ? "Paid" : "Unpaid"}
-                    </span>
-                  </td>
-                  <td style={{ display: "flex", gap: "0.4rem" }}>
-                    <Link to={`/bills/${b._id}`}>View / Print</Link>
-                    {["admin", "doctor"].includes(user.role) && !b.isPaid && (
-                      <button onClick={() => markPaid(b._id)}>Mark Paid</button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      {!loading && (
+        <motion.div
+          className="glass-card"
+          style={{ marginTop: 16 }}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.25 }}
+        >
+          <h2 className="card-title">
+            <Receipt size={20} /> {user.role === "patient" ? "My Bills" : "All Bills"}
+          </h2>
+          {bills.length === 0 ? (
+            <div className="empty-state">No bills yet.</div>
+          ) : (
+            <div className="table-scroll">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    {user.role !== "patient" && <th>Patient</th>}
+                    <th>Doctor</th>
+                    <th>Total (KSh)</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bills.map((b) => (
+                    <tr key={b._id}>
+                      {user.role !== "patient" && (
+                        <td>
+                          <div className="person-cell">
+                            <span className="avatar-sm">{initialsOf(b.patient?.name)}</span>
+                            {b.patient?.name}
+                          </div>
+                        </td>
+                      )}
+                      <td>{b.appointment?.doctor?.name || "—"}</td>
+                      <td>{Number(b.total).toLocaleString()}</td>
+                      <td>
+                        <span className={`badge ${b.isPaid ? "badge-completed" : "badge-pending"}`}>
+                          {b.isPaid ? "Paid" : "Unpaid"}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="row-actions">
+                          <Link to={`/bills/${b._id}`} className="mini-btn ghost">
+                            View / Print
+                          </Link>
+                          {isStaff && !b.isPaid && (
+                            <button onClick={() => markPaid(b._id)}>Mark Paid</button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </motion.div>
+      )}
     </div>
   );
 };

@@ -1,5 +1,43 @@
 import React, { useEffect, useState } from "react";
+import { motion } from "framer-motion";
+import { Search, Stethoscope, Users } from "lucide-react";
 import api from "../services/api";
+import Skeleton from "../components/ui/Skeleton";
+
+const initialsOf = (name = "") =>
+  name
+    .replace(/^dr\.?\s+/i, "")
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0].toUpperCase())
+    .join("") || "?";
+
+const SearchField = ({ value, onChange, placeholder }) => (
+  <div className="search-field">
+    <Search size={16} />
+    <input placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)} aria-label={placeholder} />
+  </div>
+);
+
+const SkeletonRows = () => (
+  <div style={{ display: "grid", gap: 12 }}>
+    <Skeleton height={38} />
+    <Skeleton height={38} />
+    <Skeleton height={38} />
+    <Skeleton height={38} />
+  </div>
+);
+
+const Row = ({ index, children }) => (
+  <motion.tr
+    initial={{ opacity: 0, y: 6 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.25, delay: Math.min(index, 10) * 0.03 }}
+  >
+    {children}
+  </motion.tr>
+);
 
 const DoctorsTab = () => {
   const [doctors, setDoctors] = useState([]);
@@ -16,39 +54,55 @@ const DoctorsTab = () => {
 
   return (
     <div>
-      <input
-        placeholder="Filter by specialization..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #ccc", marginBottom: "1rem", width: "260px" }}
-      />
+      <div className="section-head">
+        <SearchField value={search} onChange={setSearch} placeholder="Filter by specialization..." />
+        {!loading && (
+          <span className="count-note">
+            {doctors.length} {doctors.length === 1 ? "doctor" : "doctors"}
+          </span>
+        )}
+      </div>
+
       {loading ? (
-        <p>Loading doctors...</p>
+        <SkeletonRows />
       ) : !doctors.length ? (
-        <p>No doctors found.</p>
+        <div className="empty-state">No doctors found.</div>
       ) : (
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Specialization</th>
-              <th>Experience</th>
-              <th>Fee (KSh)</th>
-              <th>Accepting patients?</th>
-            </tr>
-          </thead>
-          <tbody>
-            {doctors.map((d) => (
-              <tr key={d._id}>
-                <td>{d.name}</td>
-                <td>{d.specialization}</td>
-                <td>{d.experienceYears} yrs</td>
-                <td>{d.consultationFee}</td>
-                <td>{d.isAcceptingPatients ? "Yes" : "No"}</td>
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Specialization</th>
+                <th>Experience</th>
+                <th>Fee (KSh)</th>
+                <th>Accepting patients?</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {doctors.map((d, i) => (
+                <Row key={d._id} index={i}>
+                  <td>
+                    <div className="person-cell">
+                      <span className="avatar-sm">{initialsOf(d.name)}</span>
+                      {d.name}
+                    </div>
+                  </td>
+                  <td>
+                    <span className="chip">{d.specialization}</span>
+                  </td>
+                  <td>{d.experienceYears} yrs</td>
+                  <td>{d.consultationFee}</td>
+                  <td>
+                    <span className={`status-tag ${d.isAcceptingPatients ? "status-ok" : "status-off"}`}>
+                      {d.isAcceptingPatients ? "Accepting" : "Not accepting"}
+                    </span>
+                  </td>
+                </Row>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
@@ -69,80 +123,96 @@ const PatientsTab = () => {
 
   return (
     <div>
-      <input
-        placeholder="Search by name..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #ccc", marginBottom: "1rem", width: "260px" }}
-      />
+      <div className="section-head">
+        <SearchField value={search} onChange={setSearch} placeholder="Search by name..." />
+        {!loading && (
+          <span className="count-note">
+            {patients.length} {patients.length === 1 ? "patient" : "patients"}
+          </span>
+        )}
+      </div>
+
       {loading ? (
-        <p>Loading patients...</p>
+        <SkeletonRows />
       ) : !patients.length ? (
-        <p>No patients found.</p>
+        <div className="empty-state">No patients found.</div>
       ) : (
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Member #</th>
-              <th>Name</th>
-              <th>Age</th>
-              <th>Gender</th>
-              <th>Phone</th>
-            </tr>
-          </thead>
-          <tbody>
-            {patients.map((p) => (
-              <tr key={p._id}>
-                <td>{p.memberNumber || "—"}</td>
-                <td>{p.name}</td>
-                <td>{p.age || "—"}</td>
-                <td>{p.gender || "—"}</td>
-                <td>{p.phone || "—"}</td>
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Member #</th>
+                <th>Name</th>
+                <th>Age</th>
+                <th>Gender</th>
+                <th>Phone</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {patients.map((p, i) => (
+                <Row key={p._id} index={i}>
+                  <td>{p.memberNumber ? <span className="mono-badge">{p.memberNumber}</span> : "—"}</td>
+                  <td>
+                    <div className="person-cell">
+                      <span className="avatar-sm">{initialsOf(p.name)}</span>
+                      {p.name}
+                    </div>
+                  </td>
+                  <td>{p.age || "—"}</td>
+                  <td style={{ textTransform: "capitalize" }}>{p.gender || "—"}</td>
+                  <td>{p.phone || "—"}</td>
+                </Row>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
 };
+
+const TABS = [
+  { value: "doctors", label: "Doctors", icon: Stethoscope },
+  { value: "patients", label: "Patients", icon: Users },
+];
 
 const People = () => {
   const [tab, setTab] = useState("doctors");
 
   return (
     <div className="page">
-      <h1>Doctors & Patients</h1>
-      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
-        <button
-          onClick={() => setTab("doctors")}
-          style={{
-            background: tab === "doctors" ? "#0f4c81" : "#e5e7eb",
-            color: tab === "doctors" ? "white" : "#333",
-            border: "none",
-            padding: "0.5rem 1rem",
-            borderRadius: "6px",
-            cursor: "pointer",
-          }}
-        >
-          Doctors
-        </button>
-        <button
-          onClick={() => setTab("patients")}
-          style={{
-            background: tab === "patients" ? "#0f4c81" : "#e5e7eb",
-            color: tab === "patients" ? "white" : "#333",
-            border: "none",
-            padding: "0.5rem 1rem",
-            borderRadius: "6px",
-            cursor: "pointer",
-          }}
-        >
-          Patients
-        </button>
+      <div className="page-header">
+        <div>
+          <h1>Doctors & Patients</h1>
+          <p>Everyone registered at the hospital, in one place.</p>
+        </div>
+        <div className="seg" role="tablist" aria-label="People">
+          {TABS.map(({ value, label, icon: Icon }) => (
+            <button key={value} className={tab === value ? "active" : ""} onClick={() => setTab(value)}>
+              {tab === value && (
+                <motion.span
+                  layoutId="people-pill"
+                  className="seg-pill"
+                  transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                />
+              )}
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <Icon size={15} /> {label}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
-      {tab === "doctors" ? <DoctorsTab /> : <PatientsTab />}
+      <motion.div
+        key={tab}
+        className="glass-card"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        {tab === "doctors" ? <DoctorsTab /> : <PatientsTab />}
+      </motion.div>
     </div>
   );
 };

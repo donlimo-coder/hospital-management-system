@@ -1,5 +1,19 @@
 import React, { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Search, UserPlus, Pencil, FileText, Upload, Trash2, UserCheck, ConciergeBell } from "lucide-react";
 import api from "../services/api";
+
+const Panel = ({ children, className = "glass-card" }) => (
+  <motion.div
+    className={className}
+    initial={{ opacity: 0, y: 14 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -8 }}
+    transition={{ duration: 0.3 }}
+  >
+    {children}
+  </motion.div>
+);
 
 const PatientReports = ({ patient }) => {
   const [reports, setReports] = useState([]);
@@ -52,46 +66,51 @@ const PatientReports = ({ patient }) => {
   };
 
   return (
-    <div className="auth-card" style={{ marginTop: "1rem" }}>
-      <h2>Lab Reports / X-rays</h2>
+    <Panel>
+      <h2 className="card-title">
+        <FileText size={20} /> Lab Reports / X-rays
+      </h2>
 
       {loading ? (
         <p>Loading reports...</p>
       ) : reports.length === 0 ? (
-        <p>No reports on file yet.</p>
+        <p style={{ color: "var(--ink-soft)", marginTop: 0 }}>No reports on file yet.</p>
       ) : (
-        <ul style={{ paddingLeft: "1.2rem" }}>
+        <div className="report-list">
           {reports.map((r) => (
-            <li key={r._id} style={{ marginBottom: "0.4rem" }}>
+            <div className="report-row" key={r._id}>
+              <FileText size={18} />
               <a href={r.url} target="_blank" rel="noreferrer">
                 {r.label}
-              </a>{" "}
-              <span style={{ color: "#888", fontSize: "0.8rem" }}>
-                ({new Date(r.uploadedAt).toLocaleDateString()})
-              </span>{" "}
-              <button
-                type="button"
-                onClick={() => handleDelete(r._id)}
-                style={{ background: "#e94560", color: "white", border: "none", borderRadius: "4px", padding: "0.1rem 0.5rem", fontSize: "0.75rem", cursor: "pointer" }}
-              >
-                Delete
+              </a>
+              <small>{new Date(r.uploadedAt).toLocaleDateString()}</small>
+              <button type="button" className="mini-btn danger" onClick={() => handleDelete(r._id)} aria-label="Delete report">
+                <Trash2 size={14} />
               </button>
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
 
-      <form onSubmit={handleUpload} style={{ marginTop: "0.8rem" }}>
+      <form onSubmit={handleUpload} className="upload-box">
         {uploadError && <p className="form-error">{uploadError}</p>}
-        <label>Label (optional)</label>
-        <input placeholder="e.g. Chest X-ray" value={label} onChange={(e) => setLabel(e.target.value)} />
-        <label>File (JPG, PNG, or PDF — max 10MB)</label>
-        <input id="report-file-input" type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={(e) => setFile(e.target.files[0])} />
-        <button type="submit" disabled={uploading} style={{ marginTop: "0.7rem" }}>
-          {uploading ? "Uploading..." : "Upload Report"}
-        </button>
+        <div className="form-grid">
+          <div className="field full">
+            <label>Label (optional)</label>
+            <input placeholder="e.g. Chest X-ray" value={label} onChange={(e) => setLabel(e.target.value)} />
+          </div>
+          <div className="field full">
+            <label>File (JPG, PNG, or PDF, max 10MB)</label>
+            <input id="report-file-input" type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={(e) => setFile(e.target.files[0])} />
+          </div>
+        </div>
+        <div className="btn-row">
+          <button type="submit" className="btn-dark" disabled={uploading}>
+            <Upload size={16} /> {uploading ? "Uploading..." : "Upload Report"}
+          </button>
+        </div>
       </form>
-    </div>
+    </Panel>
   );
 };
 
@@ -104,6 +123,50 @@ const idNumberLabel = (idType) => {
   return "ID Number";
 };
 
+const emptyForm = { name: "", age: "", gender: "male", phone: "", address: "", idType: "", idNumber: "" };
+
+const PatientFields = ({ values, onChange }) => (
+  <div className="form-grid">
+    <div className="field">
+      <label>Full Name</label>
+      <input required value={values.name} onChange={(e) => onChange({ ...values, name: e.target.value })} />
+    </div>
+    <div className="field">
+      <label>Age</label>
+      <input type="number" value={values.age} onChange={(e) => onChange({ ...values, age: e.target.value })} />
+    </div>
+    <div className="field">
+      <label>Gender</label>
+      <select value={values.gender} onChange={(e) => onChange({ ...values, gender: e.target.value })}>
+        <option value="male">Male</option>
+        <option value="female">Female</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div className="field">
+      <label>Phone</label>
+      <input value={values.phone} onChange={(e) => onChange({ ...values, phone: e.target.value })} />
+    </div>
+    <div className="field full">
+      <label>Address</label>
+      <input value={values.address} onChange={(e) => onChange({ ...values, address: e.target.value })} />
+    </div>
+    <div className="field">
+      <label>ID Type</label>
+      <select value={values.idType} onChange={(e) => onChange({ ...values, idType: e.target.value, idNumber: "" })}>
+        <option value="">Select</option>
+        <option value="national_id">National ID</option>
+        <option value="passport">Passport</option>
+        <option value="birth_certificate">Birth Certificate</option>
+      </select>
+    </div>
+    <div className="field">
+      <label>{idNumberLabel(values.idType)}</label>
+      <input value={values.idNumber} onChange={(e) => onChange({ ...values, idNumber: e.target.value })} />
+    </div>
+  </div>
+);
+
 const Reception = () => {
   const [memberDigits, setMemberDigits] = useState("");
   const [foundPatient, setFoundPatient] = useState(null);
@@ -111,12 +174,12 @@ const Reception = () => {
   const [searching, setSearching] = useState(false);
 
   const [showRegisterForm, setShowRegisterForm] = useState(false);
-  const [form, setForm] = useState({ name: "", age: "", gender: "male", phone: "", address: "", idType: "", idNumber: "" });
+  const [form, setForm] = useState(emptyForm);
   const [registerError, setRegisterError] = useState("");
   const [newPatient, setNewPatient] = useState(null);
 
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({ name: "", age: "", gender: "male", phone: "", address: "", idType: "", idNumber: "" });
+  const [editForm, setEditForm] = useState(emptyForm);
   const [editError, setEditError] = useState("");
   const [editSaving, setEditSaving] = useState(false);
 
@@ -186,6 +249,7 @@ const Reception = () => {
       setEditSaving(false);
     }
   };
+
   const handleRegister = async (e) => {
     e.preventDefault();
     setRegisterError("");
@@ -196,194 +260,157 @@ const Reception = () => {
       });
       setNewPatient(data.patient);
       setShowRegisterForm(false);
-      setForm({ name: "", age: "", gender: "male", phone: "", address: "", idType: "", idNumber: "" });
+      setForm(emptyForm);
     } catch (err) {
       setRegisterError(err.response?.data?.message || "Registration failed");
     }
   };
 
+  const nothingToShow = !foundPatient && !newPatient && !showRegisterForm;
+
   return (
     <div className="page">
-      <h1>Reception</h1>
-      <p>Look up a returning patient by their member number, or register a new walk-in.</p>
-
-      <form className="auth-card" onSubmit={handleSearch}>
-        <h2>Find Patient</h2>
-        {searchError && <p className="form-error">{searchError}</p>}
-        <label>Member Number</label>
-        <div style={{ display: "flex", alignItems: "center", border: "1px solid #ccc", borderRadius: "6px", overflow: "hidden" }}>
-          <span style={{ padding: "0.5rem 0.4rem", background: "#eaf3f0", color: "#0f4c81", fontWeight: 600, fontFamily: "monospace" }}>
-            {MEMBER_PREFIX}
-          </span>
-          <input
-            placeholder="000001"
-            required
-            inputMode="numeric"
-            value={memberDigits}
-            onChange={handleDigitsChange}
-            style={{ border: "none", flex: 1, padding: "0.5rem", fontFamily: "monospace" }}
-          />
+      <div className="page-header">
+        <div>
+          <h1>Reception</h1>
+          <p>Look up a returning patient by their member number, or register a new walk-in.</p>
         </div>
-        <button type="submit" disabled={searching} style={{ marginTop: "0.7rem" }}>
-          {searching ? "Searching..." : "Search"}
-        </button>
-      </form>
+        {!showRegisterForm && !foundPatient && (
+          <div className="page-actions">
+            <button className="btn-dark" onClick={() => setShowRegisterForm(true)}>
+              <UserPlus size={16} /> Register walk-in patient
+            </button>
+          </div>
+        )}
+      </div>
 
-      {foundPatient && (
-        <>
-          <div className="auth-card" style={{ marginTop: "1rem", maxWidth: isEditing ? "650px" : undefined }}>
-            <h2>Patient Found</h2>
-            {!isEditing ? (
-              <>
-                <p><strong>Member #:</strong> {foundPatient.memberNumber}</p>
-                <p><strong>Name:</strong> {foundPatient.name}</p>
-                <p><strong>Age:</strong> {foundPatient.age || "—"}</p>
-                <p><strong>Gender:</strong> {foundPatient.gender || "—"}</p>
-                <p><strong>Phone:</strong> {foundPatient.phone || "—"}</p>
-                <p><strong>Address:</strong> {foundPatient.address || "—"}</p>
-                <p><strong>ID:</strong> {foundPatient.idNumber ? `${foundPatient.idType?.replace("_", " ") || "ID"} - ${foundPatient.idNumber}` : "—"}</p>
-                <button type="button" onClick={startEditing} style={{ marginTop: "0.5rem" }}>
-                  Edit Details
-                </button>
-              </>
-            ) : (
-              <form onSubmit={handleEditSave}>
-                {editError && <p className="form-error">{editError}</p>}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.9rem 1.2rem" }}>
-                  <div>
-                    <label>Full Name</label>
-                    <input
-                      required
-                      value={editForm.name}
-                      onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                      style={{ width: "100%", boxSizing: "border-box" }}
-                    />
+      <div className="reception-grid">
+        <div className="stack">
+          <form className="glass-card" onSubmit={handleSearch}>
+            <h2 className="card-title">
+              <Search size={20} /> Find Patient
+            </h2>
+            {searchError && <p className="form-error">{searchError}</p>}
+            <div className="field">
+              <label>Member Number</label>
+              <div className="member-input">
+                <span className="member-prefix">{MEMBER_PREFIX}</span>
+                <input
+                  placeholder="000001"
+                  required
+                  inputMode="numeric"
+                  value={memberDigits}
+                  onChange={handleDigitsChange}
+                />
+              </div>
+            </div>
+            <div className="btn-row">
+              <button type="submit" className="btn-dark" disabled={searching}>
+                <Search size={16} /> {searching ? "Searching..." : "Search"}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div className="stack">
+          <AnimatePresence mode="popLayout">
+            {foundPatient && (
+              <React.Fragment key="found">
+                <Panel>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
+                    <h2 className="card-title" style={{ margin: 0 }}>
+                      <UserCheck size={20} /> Patient Found
+                    </h2>
+                    <span className="member-badge">{foundPatient.memberNumber}</span>
                   </div>
-                  <div>
-                    <label>Age</label>
-                    <input
-                      type="number"
-                      value={editForm.age}
-                      onChange={(e) => setEditForm({ ...editForm, age: e.target.value })}
-                      style={{ width: "100%", boxSizing: "border-box" }}
-                    />
-                  </div>
-                  <div>
-                    <label>Gender</label>
-                    <select
-                      value={editForm.gender}
-                      onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}
-                      style={{ width: "100%", boxSizing: "border-box" }}
-                    >
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label>Phone</label>
-                    <input
-                      value={editForm.phone}
-                      onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                      style={{ width: "100%", boxSizing: "border-box" }}
-                    />
-                  </div>
-                  <div style={{ gridColumn: "1 / -1" }}>
-                    <label>Address</label>
-                    <input
-                      value={editForm.address}
-                      onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
-                      style={{ width: "100%", boxSizing: "border-box" }}
-                    />
-                  </div>
-                  <div>
-                    <label>ID Type</label>
-                    <select
-                      value={editForm.idType}
-                      onChange={(e) => setEditForm({ ...editForm, idType: e.target.value, idNumber: "" })}
-                      style={{ width: "100%", boxSizing: "border-box" }}
-                    >
-                      <option value="">— Select —</option>
-                      <option value="national_id">National ID</option>
-                      <option value="passport">Passport</option>
-                      <option value="birth_certificate">Birth Certificate</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label>{idNumberLabel(editForm.idType)}</label>
-                    <input
-                      value={editForm.idNumber}
-                      onChange={(e) => setEditForm({ ...editForm, idNumber: e.target.value })}
-                      style={{ width: "100%", boxSizing: "border-box" }}
-                    />
-                  </div>
-                </div>
-                <div style={{ display: "flex", gap: "0.5rem", marginTop: "1.1rem" }}>
-                  <button type="submit" disabled={editSaving}>
-                    {editSaving ? "Saving..." : "Save Changes"}
-                  </button>
-                  <button type="button" onClick={() => setIsEditing(false)}>
-                    Cancel
-                  </button>
-                </div>
-              </form>
+
+                  {!isEditing ? (
+                    <>
+                      <dl className="detail-list">
+                        <div><dt>Name</dt><dd>{foundPatient.name}</dd></div>
+                        <div><dt>Age</dt><dd>{foundPatient.age || "—"}</dd></div>
+                        <div><dt>Gender</dt><dd>{foundPatient.gender || "—"}</dd></div>
+                        <div><dt>Phone</dt><dd>{foundPatient.phone || "—"}</dd></div>
+                        <div className="full"><dt>Address</dt><dd>{foundPatient.address || "—"}</dd></div>
+                        <div className="full">
+                          <dt>ID</dt>
+                          <dd>
+                            {foundPatient.idNumber
+                              ? `${foundPatient.idType?.replace("_", " ") || "ID"} - ${foundPatient.idNumber}`
+                              : "—"}
+                          </dd>
+                        </div>
+                      </dl>
+                      <div className="btn-row">
+                        <button type="button" className="btn-glass" onClick={startEditing}>
+                          <Pencil size={16} /> Edit Details
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <form onSubmit={handleEditSave}>
+                      {editError && <p className="form-error">{editError}</p>}
+                      <PatientFields values={editForm} onChange={setEditForm} />
+                      <div className="btn-row">
+                        <button type="submit" className="btn-dark" disabled={editSaving}>
+                          {editSaving ? "Saving..." : "Save Changes"}
+                        </button>
+                        <button type="button" className="btn-glass" onClick={() => setIsEditing(false)}>
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </Panel>
+                <PatientReports patient={foundPatient} />
+              </React.Fragment>
             )}
-          </div>
-          <PatientReports patient={foundPatient} />
-        </>
-      )}      {newPatient && (
-        <>
-          <div className="auth-card" style={{ marginTop: "1rem" }}>
-            <h2>Patient Registered ✅</h2>
-            <p>Give this member number to the patient — they'll quote it on future visits:</p>
-            <p style={{ fontSize: "1.5rem", fontWeight: 700, color: "#0f4c81" }}>{newPatient.memberNumber}</p>
-          </div>
-          <PatientReports patient={newPatient} />
-        </>
-      )}
 
-      {showRegisterForm && (
-        <form className="auth-card" style={{ marginTop: "1rem" }} onSubmit={handleRegister}>
-          <h2>Register New Patient</h2>
-          {registerError && <p className="form-error">{registerError}</p>}
+            {newPatient && (
+              <React.Fragment key="new">
+                <Panel>
+                  <div className="success-row">
+                    <UserCheck size={22} /> Patient Registered
+                  </div>
+                  <p>Give this member number to the patient. They'll quote it on future visits:</p>
+                  <span className="member-badge big">{newPatient.memberNumber}</span>
+                </Panel>
+                <PatientReports patient={newPatient} />
+              </React.Fragment>
+            )}
 
-          <label>Full Name</label>
-          <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            {showRegisterForm && (
+              <motion.form
+                key="register"
+                className="glass-card"
+                onSubmit={handleRegister}
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.3 }}
+              >
+                <h2 className="card-title">
+                  <UserPlus size={20} /> Register New Patient
+                </h2>
+                {registerError && <p className="form-error">{registerError}</p>}
+                <PatientFields values={form} onChange={setForm} />
+                <div className="btn-row">
+                  <button type="submit" className="btn-dark">
+                    <UserPlus size={16} /> Register & Get Member Number
+                  </button>
+                </div>
+              </motion.form>
+            )}
+          </AnimatePresence>
 
-          <label>Age</label>
-          <input type="number" value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} />
-
-          <label>Gender</label>
-          <select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-            <option value="other">Other</option>
-          </select>
-
-          <label>Phone</label>
-          <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-
-          <label>Address</label>
-          <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
-          <label>ID Type</label>
-          <select value={form.idType} onChange={(e) => setForm({ ...form, idType: e.target.value, idNumber: "" })}>
-            <option value="">— Select —</option>
-            <option value="national_id">National ID</option>
-            <option value="passport">Passport</option>
-            <option value="birth_certificate">Birth Certificate</option>
-          </select>
-
-          <label>{idNumberLabel(form.idType)}</label>
-          <input value={form.idNumber} onChange={(e) => setForm({ ...form, idNumber: e.target.value })} />
-          <button type="submit">Register & Get Member Number</button>
-        </form>
-      )}
-
-      {!showRegisterForm && !foundPatient && (
-        <button style={{ marginTop: "1rem" }} onClick={() => setShowRegisterForm(true)}>
-          + Register a new walk-in patient
-        </button>
-      )}
+          {nothingToShow && (
+            <div className="glass-card empty-panel">
+              <ConciergeBell size={34} />
+              <p style={{ margin: 0 }}>Search for a patient by member number, or register a walk-in to get started.</p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
